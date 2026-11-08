@@ -1,0 +1,75 @@
+# Entorno local de UcoKudos (ADR-0016). Misma topología que producción; lo que cambia es la configuración.
+#
+#   postgres        Base de datos única (ADR-0003)
+#   objetos         Almacenamiento de adjuntos compatible con S3 (ADR-0012)
+#   mailpit         Captura el correo en local: nada sale a internet (ADR-0008)
+#   observabilidad  Recibe trazas, métricas y logs por OTLP (ADR-0014)
+#
+# Las contraseñas se leen de .env, que no se versiona (ADR-0018).
+# Los puertos del host están elegidos para no chocar con otros entornos locales del autor.
+services:
+  postgres:
+    image: postgres:18.2-alpine
+    container_name: ucokudos-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USUARIO:?Define POSTGRES_USUARIO en .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+      POSTGRES_DB: ${POSTGRES_BD:-ucokudos}
+    ports:
+      - "${POSTGRES_PUERTO:-5435}:5432"
+    volumes:
+      - ucokudos-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Adjuntos (ADR-0012): contenedor PRIVADO. La API firma URL de vida corta; no hay lectura anónima.
+  objetos:
+    image: quay.io/minio/minio:RELEASE.2026-09-07T16-13-09Z
+    container_name: ucokudos-objetos
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${OBJETOS_USUARIO:?Define OBJETOS_USUARIO en .env}
+      MINIO_ROOT_PASSWORD: ${OBJETOS_PASSWORD:?Define OBJETOS_PASSWORD en .env}
+    ports:
+      # Solo en el equipo local: en producción no se publica a internet (ADR-0016).
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ucokudos-objetos:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Correo atrapado en local (ADR-0008): interfaz en http://localhost:8026, SMTP en 1025.
+  # Permite revisar el HTML tal como lo verá el destinatario sin gastar cuota ni escribir a nadie.
+  mailpit:
+    image: axllent/mailpit:v1.27.7
+    container_name: ucokudos-mailpit
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8026:8025"
+      - "127.0.0.1:1025:1025"
+
+  # Observabilidad local (ADR-0014): recibe por OTLP las trazas, métricas y logs de la API.
+  # Solo escucha en el equipo local y no persiste nada: muestra datos internos del sistema.
+  # El archivo histórico es la auditoría (ADR-0013), que sí persiste en PostgreSQL.
+  observabilidad:
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.6.1
+    container_name: ucokudos-observabilidad
+    restart: unless-stopped
+    environment:
+      DOTNET_DASHBOARD_UNSECURED_ALLOW_ANONYMOUS: "true"
+    ports:
+      - "127.0.0.1:${OBSERVABILIDAD_PUERTO:-18890}:18888"
+      - "127.0.0.1:4317:18889"
+
+volumes:
+  ucokudos-pgdata:
+  ucokudos-objetos:

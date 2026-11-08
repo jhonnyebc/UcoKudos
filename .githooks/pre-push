@@ -1,0 +1,34 @@
+#!/bin/sh
+# Escaneo de secretos antes del envío (ADR-0017, ADR-0018).
+#
+# Este gancho es el que de verdad importa: detectar un secreto en el pipeline significa que ya
+# está en el repositorio remoto, y borrarlo del archivo no lo saca del historial.
+#
+# Activarlo una vez por clon:
+#   git config core.hooksPath .githooks
+#
+# Usa gitleaks si está instalado; si no, la imagen de Docker con versión fija.
+set -e
+
+VERSION_IMAGEN="zricethezav/gitleaks:v8.30.1"
+
+if command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-push: buscando secretos con gitleaks local..."
+    gitleaks git --pre-commit --staged --redact --verbose || {
+        echo "pre-push: BLOQUEADO. Se encontró un posible secreto. No se envía nada."
+        exit 1
+    }
+elif command -v docker >/dev/null 2>&1; then
+    echo "pre-push: buscando secretos con gitleaks en Docker..."
+    docker run --rm -v "$(pwd):/repo" "$VERSION_IMAGEN" detect \
+        --source=/repo --redact --verbose --no-banner || {
+        echo "pre-push: BLOQUEADO. Se encontró un posible secreto. No se envía nada."
+        exit 1
+    }
+else
+    echo "pre-push: ni gitleaks ni Docker están disponibles; no se pudo escanear."
+    echo "pre-push: instalar gitleaks o abrir Docker antes de enviar."
+    exit 1
+fi
+
+echo "pre-push: sin secretos detectados."

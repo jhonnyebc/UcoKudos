@@ -1,0 +1,22 @@
+# Normalización de fin de línea. Evita que `dotnet format` marque archivos que mezclan CRLF y LF.
+* text=auto
+
+*.cs text eol=crlf
+*.csproj text eol=crlf
+*.slnx text eol=crlf
+*.props text eol=crlf
+*.json text eol=crlf
+*.md text eol=crlf
+
+# Los que ejecuta Linux necesitan LF o fallan dentro del contenedor.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+.githooks/* text eol=lf
+
+# Binarios: sin normalizar.
+*.png binary
+*.jpg binary
+*.pdf binary
+*.woff2 binary

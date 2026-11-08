@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <!-- ADR-0017: una advertencia aceptada una vez se acepta siempre. El CI compila con esto activado. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Versión semántica del producto. Va en los ensamblados y en la etiqueta de las imágenes
+         (<versión>-<sha>, ADR-0016). Se sube a mano en cada entrega hacia main. -->
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>

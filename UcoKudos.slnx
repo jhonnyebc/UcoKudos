@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/UcoKudos.Api/UcoKudos.Api.csproj" />
+    <Project Path="src/UcoKudos.Application/UcoKudos.Application.csproj" />
+    <Project Path="src/UcoKudos.Domain/UcoKudos.Domain.csproj" />
+    <Project Path="src/UcoKudos.Infrastructure/UcoKudos.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/UcoKudos.ArchitectureTests/UcoKudos.ArchitectureTests.csproj" />
+    <Project Path="tests/UcoKudos.IntegrationTests/UcoKudos.IntegrationTests.csproj" />
+    <Project Path="tests/UcoKudos.UnitTests/UcoKudos.UnitTests.csproj" />
+  </Folder>
+</Solution>

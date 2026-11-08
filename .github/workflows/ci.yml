@@ -1,0 +1,239 @@
+# Quality gates de ADR-0017. Corren en cada PR hacia develop o main y en cada push a esas ramas.
+# Todas bloquean: una puerta que solo informa es documentación, no una puerta.
+name: CI
+
+on:
+  pull_request:
+    branches: [develop, main]
+  push:
+    branches: [develop, main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_NOLOGO: true
+  DOTNET_CLI_TELEMETRY_OPTOUT: true
+  # Umbral de cobertura del núcleo (Domain + Application), ADR-0017.
+  # Arranca en 0 porque el dominio todavía no existe; sube a 80 líneas / 70 ramas
+  # en cuanto entre el primer caso de uso.
+  UMBRAL_LINEAS: 0
+  UMBRAL_RAMAS: 0
+
+jobs:
+  backend:
+    name: Backend (build, formato, pruebas y cobertura)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restaurar
+        run: dotnet restore UcoKudos.slnx
+
+      - name: Compilar sin advertencias (TreatWarningsAsErrors)
+        run: dotnet build UcoKudos.slnx --no-restore -c Release
+
+      - name: Formato
+        run: dotnet format UcoKudos.slnx --verify-no-changes --no-restore
+
+      - name: Pruebas unitarias con gate de cobertura del núcleo
+        run: |
+          dotnet test tests/UcoKudos.UnitTests --no-build -c Release \
+            -p:CollectCoverage=true \
+            -p:CoverletOutputFormat=opencover \
+            -p:CoverletOutput=TestResults/coverage/ \
+            -p:Threshold="${UMBRAL_LINEAS},${UMBRAL_RAMAS}" \
+            -p:ThresholdType="line,branch"
+
+      # La regla que solo esta prueba puede verificar es la 4 de ADR-0001: la API referencia la
+      # infraestructura para su raíz de composición, así que el compilador no la puede vigilar.
+      - name: Pruebas de arquitectura (reglas de ADR-0001)
+        run: dotnet test tests/UcoKudos.ArchitectureTests --no-build -c Release
+
+      # Contra PostgreSQL y almacenamiento de objetos reales en contenedores desechables: un doble
+      # en memoria no reproduce índices parciales, bloqueos ni la expiración de una URL firmada.
+      - name: Pruebas de integración (Testcontainers)
+        run: dotnet test tests/UcoKudos.IntegrationTests --no-build -c Release --filter "Category=Integration"
+
+      - name: Publicar reporte de cobertura
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cobertura
+          path: tests/UcoKudos.UnitTests/TestResults/coverage/
+          if-no-files-found: ignore
+
+  secretos:
+    name: Escaneo de secretos (ADR-0018)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: un secreto borrado del archivo sigue en el historial.
+          fetch-depth: 0
+
+      # Fijada por SHA, no por etiqueta: una etiqueta se puede mover a código distinto (ADR-0017).
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  vulnerabilidades:
+    name: Escaneo de vulnerabilidades (Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Trivy lee las dependencias NuGet, también las transitivas, de los *.deps.json de la compilación.
+      - name: Compilar para listar las dependencias NuGet
+        run: dotnet build UcoKudos.slnx -c Release
+
+      # Bloquea solo lo que tiene corrección disponible: bloquear por algo sin parche detiene el
+      # trabajo sin ofrecer salida, y así es como se acaba desactivando la puerta (ADR-0017).
+      - name: Dependencias de producción y configuración
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln,misconfig
+          skip-dirs: tests
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Informe con las dependencias de desarrollo (no bloquea)
+        if: always()
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        env:
+          TRIVY_INCLUDE_DEV_DEPS: 'true'
+        with:
+          scan-type: fs
+          scan-ref: .
+          scanners: vuln
+          exit-code: '0'
+          skip-setup-trivy: true
+
+  calidad:
+    name: Análisis estático (Sonar)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Historial completo: Sonar lo usa para saber qué código es nuevo.
+          fetch-depth: 0
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      # Sin token se omite en lugar de fallar: los PR automáticos de dependencias no reciben secretos.
+      - name: Comprobar el token
+        id: token
+        run: echo "disponible=$([ -n "$SONAR_TOKEN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      - name: Analizar
+        if: steps.token.outputs.disponible == 'true'
+        run: |
+          dotnet tool install --global dotnet-sonarscanner
+          dotnet sonarscanner begin /k:"jhonnyebc_UcoKudos" /o:"jhonnyebc" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="tests/UcoKudos.UnitTests/TestResults/coverage/coverage.opencover.xml" \
+            /d:sonar.exclusions="**/Migraciones/**" \
+            /d:sonar.coverage.exclusions="src/UcoKudos.Infrastructure/**,src/UcoKudos.Api/**,docker/**"
+          dotnet build UcoKudos.slnx -c Release
+          dotnet test tests/UcoKudos.UnitTests --no-build -c Release \
+            -p:CollectCoverage=true -p:CoverletOutputFormat=opencover \
+            -p:CoverletOutput=TestResults/coverage/ -p:Threshold=0
+          dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+  imagenes:
+    name: Imagen de contenedor (build y Trivy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      etiqueta: ${{ steps.version.outputs.etiqueta }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Etiqueta de la imagen (<versión de Directory.Build.props>-<sha corto>)
+        id: version
+        run: |
+          version=$(grep -oP '(?<=<Version>)[^<]+' Directory.Build.props)
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "etiqueta=${version}-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+
+      - name: Construir la imagen de la API
+        run: |
+          docker build \
+            --build-arg VERSION="${{ steps.version.outputs.version }}" \
+            --build-arg REVISION="$GITHUB_SHA" \
+            -t "ucokudos-api:${{ steps.version.outputs.etiqueta }}" .
+
+      # Se escanea la imagen que se va a desplegar, no el código que la origina.
+      - name: Trivy sobre la imagen
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: ucokudos-api:${{ steps.version.outputs.etiqueta }}
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+
+      # Se guarda exactamente la imagen escaneada: reconstruirla después invalidaría el escaneo.
+      - name: Guardar la imagen escaneada
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: docker save "ucokudos-api:${{ steps.version.outputs.etiqueta }}" | gzip > imagen.tar.gz
+
+      - name: Subir la imagen como artefacto
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: imagen
+          path: imagen.tar.gz
+          retention-days: 1
+
+  publicar:
+    name: Publicar la imagen en el registro
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [backend, secretos, vulnerabilidades, calidad, imagenes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: imagen
+
+      - name: Publicar <versión>-<sha> (nunca latest)
+        env:
+          ETIQUETA: ${{ needs.imagenes.outputs.etiqueta }}
+        run: |
+          gunzip -c imagen.tar.gz | docker load
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          registro=$(echo "ghcr.io/${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          docker tag "ucokudos-api:$ETIQUETA" "$registro/ucokudos-api:$ETIQUETA"
+          docker push "$registro/ucokudos-api:$ETIQUETA"
