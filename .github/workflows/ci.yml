@@ -18,11 +18,10 @@ concurrency:
 env:
   DOTNET_NOLOGO: true
   DOTNET_CLI_TELEMETRY_OPTOUT: true
-  # Umbral de cobertura del núcleo (Domain + Application), ADR-0017.
-  # Arranca en 0 porque el dominio todavía no existe; sube a 80 líneas / 70 ramas
-  # en cuanto entre el primer caso de uso.
-  UMBRAL_LINEAS: 0
-  UMBRAL_RAMAS: 0
+  # El umbral de cobertura del núcleo (ADR-0017) vive en scripts/pruebas-en-contenedor.sh, que
+  # es el único lugar donde se define: así local y CI no pueden discrepar.
+  # Carpeta de artefactos de compilación, relativa en el runner.
+  ARTEFACTOS: artefactos
 
 jobs:
   backend:
@@ -45,24 +44,21 @@ jobs:
       - name: Formato
         run: dotnet format UcoKudos.slnx --verify-no-changes --no-restore
 
+      # Se invoca el mismo script que en local, donde scripts/pruebas.ps1 lo ejecuta dentro de un
+      # contenedor Linux. Así un resultado local y uno del pipeline son comparables y no hay dos
+      # juegos de argumentos que mantener de acuerdo.
       - name: Pruebas unitarias con gate de cobertura del núcleo
-        run: |
-          dotnet test tests/UcoKudos.UnitTests --no-build -c Release \
-            -p:CollectCoverage=true \
-            -p:CoverletOutputFormat=opencover \
-            -p:CoverletOutput=TestResults/coverage/ \
-            -p:Threshold="${UMBRAL_LINEAS},${UMBRAL_RAMAS}" \
-            -p:ThresholdType="line,branch"
+        run: sh scripts/pruebas-en-contenedor.sh unitarias
 
       # La regla que solo esta prueba puede verificar es la 4 de ADR-0001: la API referencia la
       # infraestructura para su raíz de composición, así que el compilador no la puede vigilar.
       - name: Pruebas de arquitectura (reglas de ADR-0001)
-        run: dotnet test tests/UcoKudos.ArchitectureTests --no-build -c Release
+        run: sh scripts/pruebas-en-contenedor.sh arquitectura
 
       # Contra PostgreSQL y almacenamiento de objetos reales en contenedores desechables: un doble
       # en memoria no reproduce índices parciales, bloqueos ni la expiración de una URL firmada.
       - name: Pruebas de integración (Testcontainers)
-        run: dotnet test tests/UcoKudos.IntegrationTests --no-build -c Release --filter "Category=Integration"
+        run: sh scripts/pruebas-en-contenedor.sh integracion
 
       - name: Publicar reporte de cobertura
         if: always()

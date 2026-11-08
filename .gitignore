@@ -500,3 +500,6 @@ coverage/
 .idea/
 .vs/
 *.user
+
+# Artefactos de las compilaciones en contenedor y en el CI
+artefactos/

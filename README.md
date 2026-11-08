@@ -58,19 +58,17 @@ dotnet build UcoKudos.slnx -c Release
 dotnet format UcoKudos.slnx --verify-no-changes
 ```
 
-```bash
-dotnet test tests/UcoKudos.UnitTests -c Release
+```powershell
+./scripts/pruebas.ps1
 ```
 
-```bash
-dotnet test tests/UcoKudos.ArchitectureTests -c Release
+```powershell
+./scripts/pruebas.ps1 -Proyecto integracion
 ```
 
-```bash
-dotnet test tests/UcoKudos.IntegrationTests -c Release --filter "Category=Integration"
-```
+Las pruebas corren **dentro de un contenedor Linux**, porque Smart App Control bloquea en este equipo la carga de ensamblados recién compilados. Es el mismo script que invoca el CI, así que local y pipeline hacen lo mismo. Necesita Docker Desktop encendido; el detalle está en la sección 6 del [manual](docs/MANUAL-PUESTA-A-PUNTO.md).
 
-Las pruebas de integración necesitan Docker Desktop encendido. Toda clase de `IntegrationTests` debe llevar la marca de categoría o el CI no la ejecuta, y el pipeline seguiría en verde sin haberla corrido.
+Toda clase de `IntegrationTests` debe llevar la marca de categoría o el CI no la ejecuta, y el pipeline seguiría en verde sin haberla corrido.
 
 ## Reglas de trabajo
 

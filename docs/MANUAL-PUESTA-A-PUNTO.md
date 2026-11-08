@@ -78,19 +78,33 @@ Las migraciones se aplican con la herramienta de Entity Framework en cuanto exis
 
 ## 6. Ejecutar las pruebas
 
-```bash
-dotnet test tests/UcoKudos.UnitTests -c Release
+Las pruebas se ejecutan **dentro de un contenedor Linux**, no directamente en Windows:
+
+```powershell
+./scripts/pruebas.ps1
 ```
 
-```bash
-dotnet test tests/UcoKudos.ArchitectureTests -c Release
+```powershell
+./scripts/pruebas.ps1 -Proyecto arquitectura
 ```
 
-```bash
-dotnet test tests/UcoKudos.IntegrationTests -c Release --filter "Category=Integration"
+```powershell
+./scripts/pruebas.ps1 -Proyecto integracion
 ```
 
-Las de integración levantan sus propios contenedores desechables, así que **Docker Desktop debe estar abierto**. Si fallan al conectar, iniciarlo y esperar a que `docker info` responda.
+Sin argumentos corre las unitarias y las de arquitectura. Las de integración se piden aparte porque levantan sus propios contenedores y tardan bastante más. **Docker Desktop debe estar abierto**; el script lo comprueba y avisa si no responde.
+
+### Por qué en un contenedor
+
+En el equipo de desarrollo, **Smart App Control** está activo en modo bloqueo y rechaza cargar ensamblados recién compilados que todavía no tienen reputación. `dotnet build` y `dotnet format` funcionan sin problema, pero el ejecutor de pruebas muere antes de la primera prueba con `An Application Control policy has blocked this file (0x800711C7)`.
+
+El contenedor lo evita sin desactivar ninguna protección del sistema, que además sería irreversible: Smart App Control no se puede volver a activar sin reinstalar Windows.
+
+Hay un segundo beneficio: es el mismo entorno Linux en el que el pipeline ejecuta las pruebas. De hecho el CI invoca **el mismo script**, `scripts/pruebas-en-contenedor.sh`, así que un resultado local y uno del pipeline son comparables y el umbral de cobertura está definido en un único lugar.
+
+La compilación del contenedor usa una carpeta de artefactos propia, separada de `bin/` y `obj/` de Windows: mezclarlas rompe las dos, porque los archivos intermedios guardan rutas absolutas del sistema donde se generaron. El caché de NuGet vive en un volumen con nombre, así que solo la primera ejecución descarga paquetes.
+
+En otro equipo sin Smart App Control, `dotnet test` directo funciona igual; el script sigue siendo la forma recomendada por la paridad con el CI.
 
 ## 7. Conectar los proveedores externos
 
@@ -142,4 +156,6 @@ Conviene dejar escrito también el **procedimiento manual** de despliegue: si el
 | `docker` no se encuentra en PowerShell | No está en el PATH de la sesión; recargarlo o abrir una terminal nueva |
 | PostgreSQL no publica el puerto 5435 | Recrear solo ese servicio: `docker compose up -d --force-recreate --no-deps postgres`. Los datos están en el volumen |
 | Una prueba de integración no se ejecuta en el CI | Le falta la marca de categoría. El pipeline sigue en verde sin haberla corrido, que es lo peligroso |
-| Al cargar los DLL recién compilados, Windows responde que una política de control de aplicaciones lo bloquea | Smart App Control está activo en el equipo y bloquea ensamblados nuevos sin reputación. Ejecutar `dotnet test` desde la terminal propia, o desactivar Smart App Control en Seguridad de Windows |
+| Al cargar los DLL recién compilados, Windows responde que una política de control de aplicaciones lo bloquea | Smart App Control bloquea ensamblados nuevos sin reputación. Es la razón por la que las pruebas se ejecutan en contenedor: usar `./scripts/pruebas.ps1` (sección 6) en lugar de `dotnet test` directo |
+| `./scripts/pruebas.ps1` avisa de que Docker no responde | Docker Desktop cerrado. Abrirlo y esperar a que `docker info` conteste, cerca de un minuto |
+| `docker pull` falla con `not found` sobre una imagen del SDK | La etiqueta de la imagen no es la versión del SDK instalado. Las disponibles se consultan en `https://mcr.microsoft.com/v2/dotnet/sdk/tags/list` |

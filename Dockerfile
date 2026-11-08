@@ -6,7 +6,7 @@
 # paquetes y con usuario sin privilegios, lo que reduce la superficie y los hallazgos de Trivy
 # (ADR-0017). Variante "extra" porque trae ICU y la base de zonas horarias que necesitan los
 # textos en español y el manejo de fechas.
-ARG SDK=mcr.microsoft.com/dotnet/sdk:10.0.204-noble
+ARG SDK=mcr.microsoft.com/dotnet/sdk:10.0.403-noble
 ARG ASPNET=mcr.microsoft.com/dotnet/aspnet:10.0.14-noble-chiseled-extra
 
 FROM ${SDK} AS compilacion
