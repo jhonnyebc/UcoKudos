@@ -15,7 +15,7 @@ Plataforma institucional de reconocimientos de la Universidad Católica de Orien
 | `tests/UcoKudos.UnitTests` | Base de la pirámide: dominio y casos de uso, sin infraestructura |
 | `tests/UcoKudos.ArchitectureTests` | Las cinco reglas de dependencia de ADR-0001, verificadas |
 | `tests/UcoKudos.IntegrationTests` | Contra PostgreSQL y almacenamiento reales en contenedores desechables |
-| `docs/` | Documentación de la entrega. Empezar por [docs/adr/README.md](docs/adr/README.md) |
+| `docs/` | Documentación de la entrega: DAS, 19 ADR, drivers, ABB y SBB, 21 diagramas y los análisis. Empezar por [docs/DAS.md](docs/DAS.md) |
 
 La dirección de las dependencias la impone el compilador, no la convención: cada capa es un proyecto y las referencias van en un solo sentido.
 
