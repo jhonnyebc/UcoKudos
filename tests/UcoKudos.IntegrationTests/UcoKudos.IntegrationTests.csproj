@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\UcoKudos.Api\UcoKudos.Api.csproj" />
+    <ProjectReference Include="..\..\src\UcoKudos.Infrastructure\UcoKudos.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

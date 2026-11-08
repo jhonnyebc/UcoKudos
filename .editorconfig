@@ -47,9 +47,16 @@ dotnet_naming_rule.tipos_pascal.style = pascal
 dotnet_naming_symbols.tipos.applicable_kinds = class,struct,interface,enum,delegate,method,property,event
 dotnet_naming_style.pascal.capitalization = pascal_case
 
-# Esta regla va primero: un campo estático de solo lectura es un valor fijo, no estado mutable
-# del objeto, así que lleva PascalCase. Sin esta excepción, la regla de abajo le exigiría el
-# guion bajo que está pensado para el estado de instancia.
+# Estas dos reglas van primero: una constante y un campo estático de solo lectura son valores
+# fijos, no estado mutable del objeto, así que llevan PascalCase. Sin estas excepciones, la regla
+# de abajo les exigiría el guion bajo, que está pensado para el estado de instancia.
+dotnet_naming_rule.constantes.severity = error
+dotnet_naming_rule.constantes.symbols = constantes
+dotnet_naming_rule.constantes.style = pascal
+dotnet_naming_symbols.constantes.applicable_kinds = field
+dotnet_naming_symbols.constantes.applicable_accessibilities = *
+dotnet_naming_symbols.constantes.required_modifiers = const
+
 dotnet_naming_rule.campos_estaticos_fijos.severity = error
 dotnet_naming_rule.campos_estaticos_fijos.symbols = campos_estaticos_fijos
 dotnet_naming_rule.campos_estaticos_fijos.style = pascal

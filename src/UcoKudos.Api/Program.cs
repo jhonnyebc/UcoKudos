@@ -1,17 +1,91 @@
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using UcoKudos.Api.Endpoints;
+using UcoKudos.Api.Plataforma;
 using UcoKudos.Infrastructure;
 
 var constructor = WebApplication.CreateBuilder(args);
 
+// ---------------------------------------------------------------------------------------------
 // Raíz de composición: el único lugar de la API que conoce la capa de infraestructura (ADR-0001).
-constructor.Services.AgregarInfraestructura();
+// Fuera de aquí, los endpoints solo ven puertos de entrada y DTO, y la prueba de arquitectura
+// La_api_no_usa_la_infraestructura_fuera_de_la_raiz_de_composicion lo vigila.
+// ---------------------------------------------------------------------------------------------
+constructor.Services.AgregarInfraestructura(constructor.Configuration);
 
-// Puntos de salud (ADR-0014): el de vida dice si el proceso está en pie; el de preparación
-// comprobará además la base y el almacenamiento de objetos cuando existan sus adaptadores.
+// Las enumeraciones viajan como texto, no como número: el contrato se lee sin tabla de conversión
+// y un valor nuevo no desplaza los existentes.
+constructor.Services.ConfigureHttpJsonOptions(opciones =>
+    opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// ---------------------------------------------------------------------------------------------
+// Errores: el manejador traduce los errores de dominio a códigos de estado y añade el
+// identificador de traza a toda respuesta de error (ADR-0014).
+// ---------------------------------------------------------------------------------------------
+constructor.Services.AddProblemDetails();
+constructor.Services.AddExceptionHandler<ManejadorExcepciones>();
+
+// ---------------------------------------------------------------------------------------------
+// Autenticación delegada por OIDC (ADR-0004). La API es un validador de token: no custodia
+// contraseñas. El rol NO viaja en el token; se resuelve en cada petición contra la base.
+// ---------------------------------------------------------------------------------------------
+var emisor = constructor.Configuration["UcoKudos:Identidad:Emisor"];
+var audiencia = constructor.Configuration["UcoKudos:Identidad:Audiencia"];
+var identidadConfigurada = !string.IsNullOrWhiteSpace(emisor) && !string.IsNullOrWhiteSpace(audiencia);
+
+if (identidadConfigurada)
+{
+    constructor.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(opciones =>
+        {
+            opciones.Authority = emisor;
+            opciones.Audience = audiencia;
+            opciones.TokenValidationParameters.ValidateIssuer = true;
+            opciones.TokenValidationParameters.ValidateAudience = true;
+            opciones.TokenValidationParameters.ValidateLifetime = true;
+        });
+}
+else
+{
+    // Sin proveedor configurado la API arranca igual, con las rutas anónimas disponibles. Es
+    // deliberado: permite levantar el entorno y ver el muro antes de configurar la identidad.
+    constructor.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+}
+
+constructor.Services.AddAuthorization();
+
+// Contrato explícito del que se generan los tipos del cliente: una ruptura de contrato falla al
+// compilar en el front en lugar de en producción (ADR-0015).
+constructor.Services.AddOpenApi();
+
 constructor.Services.AddHealthChecks();
 
 var aplicacion = constructor.Build();
 
-aplicacion.MapHealthChecks("/salud/vivo");
-aplicacion.MapHealthChecks("/salud/listo");
+aplicacion.UseExceptionHandler();
+aplicacion.UseAuthentication();
+aplicacion.UseAuthorization();
+
+if (aplicacion.Environment.IsDevelopment())
+    aplicacion.MapOpenApi();
+
+// ---------------------------------------------------------------------------------------------
+// Rutas. El token se exige por GRUPO y no con una política global de reserva: una política global
+// convierte las rutas inexistentes en 401 y esconde los errores de enrutamiento detrás de un
+// problema de autenticación (ADR-0004).
+// ---------------------------------------------------------------------------------------------
+aplicacion.MapearSalud();
+
+var api = aplicacion.MapGroup(string.Empty);
+
+if (identidadConfigurada)
+    api = aplicacion.MapGroup(string.Empty).RequireAuthorization();
+
+api.MapearKudos();
+api.MapearIdentidad();
+api.MapearCategorias();
+api.MapearInteraccion();
+api.MapearAuditoria();
+api.MapearAvisos();
 
 aplicacion.Run();
