@@ -12,23 +12,47 @@ set -e
 
 VERSION_IMAGEN="zricethezav/gitleaks:v8.30.1"
 
+# Códigos de salida de gitleaks: 0 sin hallazgos, 1 hallazgos, cualquier otro = no pudo ejecutarse.
+# Distinguirlos importa: un fallo de la herramienta NO es un secreto encontrado, y confundirlos
+# hace que el gancho bloquee por la razón equivocada y mande a buscar un secreto que no existe.
+interpretar() {
+    codigo="$1"
+    case "$codigo" in
+        0)
+            echo "pre-push: sin secretos detectados."
+            return 0
+            ;;
+        1)
+            echo "pre-push: BLOQUEADO. Se encontró un posible secreto. No se envía nada."
+            return 1
+            ;;
+        *)
+            echo "pre-push: el escaneo NO se pudo ejecutar (código $codigo). No es un secreto encontrado."
+            echo "pre-push: se bloquea igual, porque enviar sin escanear deja el repositorio sin esa verificación."
+            return 1
+            ;;
+    esac
+}
+
 if command -v gitleaks >/dev/null 2>&1; then
     echo "pre-push: buscando secretos con gitleaks local..."
-    gitleaks git --pre-commit --staged --redact --verbose || {
-        echo "pre-push: BLOQUEADO. Se encontró un posible secreto. No se envía nada."
-        exit 1
-    }
+    set +e
+    gitleaks git --pre-commit --staged --redact --verbose
+    codigo=$?
+    set -e
+    interpretar "$codigo"
 elif command -v docker >/dev/null 2>&1; then
     echo "pre-push: buscando secretos con gitleaks en Docker..."
-    docker run --rm -v "$(pwd):/repo" "$VERSION_IMAGEN" detect \
-        --source=/repo --redact --verbose --no-banner || {
-        echo "pre-push: BLOQUEADO. Se encontró un posible secreto. No se envía nada."
-        exit 1
-    }
+    # MSYS_NO_PATHCONV=1 es imprescindible en Git Bash sobre Windows: sin él, la shell convierte
+    # las rutas del contenedor (/repo) en rutas de Windows y gitleaks no encuentra nada que escanear.
+    set +e
+    MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd):/repo" "$VERSION_IMAGEN" \
+        detect --source=/repo --redact --verbose --no-banner
+    codigo=$?
+    set -e
+    interpretar "$codigo"
 else
     echo "pre-push: ni gitleaks ni Docker están disponibles; no se pudo escanear."
     echo "pre-push: instalar gitleaks o abrir Docker antes de enviar."
     exit 1
 fi
-
-echo "pre-push: sin secretos detectados."
