@@ -1,3 +1,4 @@
+using Amazon.S3;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -136,16 +137,61 @@ public static class ServiciosInfraestructura
         servicios.AddSingleton<AvisosEnVivoSse>();
         servicios.AddSingleton<IAvisosEnVivo>(sp => sp.GetRequiredService<AvisosEnVivoSse>());
 
+        // Web Push cae al simulado mientras no haya claves VAPID. No es un fallo: sin este canal el
+        // aviso queda persistido y el usuario lo ve al entrar (ADR-0009).
         var opcionesPush = Leer<OpcionesPush>(configuracion, OpcionesPush.Seccion);
         servicios.AddSingleton(opcionesPush);
-        servicios.AddSingleton<EnviadorPushSimulado>();
-        servicios.AddSingleton<IEnviadorPush>(sp => sp.GetRequiredService<EnviadorPushSimulado>());
+
+        if (opcionesPush.EstaConfigurado)
+        {
+            servicios.AddHttpClient(nameof(EnviadorPushWebPush))
+                .ConfigureHttpClient(cliente => cliente.Timeout = TimeSpan.FromSeconds(15));
+
+            servicios.AddSingleton(sp => FabricaPushServiceClient.Crear(
+                opcionesPush,
+                sp.GetRequiredService<IHttpClientFactory>().CreateClient(nameof(EnviadorPushWebPush))));
+
+            servicios.AddSingleton<IEnviadorPush, EnviadorPushWebPush>();
+        }
+        else
+        {
+            servicios.AddSingleton<EnviadorPushSimulado>();
+            servicios.AddSingleton<IEnviadorPush>(sp => sp.GetRequiredService<EnviadorPushSimulado>());
+        }
 
         // --- Adjuntos (ADR-0012) ---
         var opcionesObjetos = Leer<OpcionesObjetos>(configuracion, OpcionesObjetos.Seccion);
         servicios.AddSingleton(opcionesObjetos);
-        servicios.AddSingleton<AlmacenObjetosSimulado>();
-        servicios.AddSingleton<IAlmacenObjetos>(sp => sp.GetRequiredService<AlmacenObjetosSimulado>());
+
+        if (opcionesObjetos.EsSimulado)
+        {
+            servicios.AddSingleton<AlmacenObjetosSimulado>();
+            servicios.AddSingleton<IAlmacenObjetos>(sp => sp.GetRequiredService<AlmacenObjetosSimulado>());
+        }
+        else
+        {
+            // El cliente va con estilo de ruta y endpoint propio: es lo que permite que el mismo
+            // adaptador hable con el almacenamiento autoalojado de hoy y con un servicio gestionado
+            // el día que haya presupuesto, cambiando solo configuración (ADR-0012).
+            servicios.AddSingleton<IAmazonS3>(_ => new AmazonS3Client(
+                new Amazon.Runtime.BasicAWSCredentials(opcionesObjetos.Usuario, opcionesObjetos.Password),
+                new AmazonS3Config
+                {
+                    ServiceURL = opcionesObjetos.Endpoint,
+                    ForcePathStyle = true,
+                    AuthenticationRegion = "us-east-1",
+
+                    // El esquema sale del endpoint configurado, no de un valor por omisión. El SDK
+                    // firma las URL con https salvo que se le diga lo contrario, así que contra un
+                    // almacenamiento local en http las URL prefirmadas se generaban con https y el
+                    // cliente fallaba en el saludo TLS. En el servidor el endpoint será https y esto
+                    // quedará en false solo, que es lo que debe pasar.
+                    UseHttp = opcionesObjetos.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                }));
+
+            servicios.AddSingleton<AlmacenObjetosCompatibleS3>();
+            servicios.AddSingleton<IAlmacenObjetos>(sp => sp.GetRequiredService<AlmacenObjetosCompatibleS3>());
+        }
     }
 
     private static void AgregarCasosUso(IServiceCollection servicios)

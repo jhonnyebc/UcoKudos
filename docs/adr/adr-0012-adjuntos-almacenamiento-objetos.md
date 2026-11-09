@@ -6,7 +6,7 @@
 |---|---|
 | ID | ADR-0012 |
 | Fecha | 2026-11-08 |
-| Estado | **Accepted** |
+| Estado | **Accepted** (rev. 2026-11-09) |
 | Participantes | Jhonny Estiven Benítez Caro |
 | Curso | Ingeniería del Software II — UCO, semestre 2-2026 |
 | Profesor evaluador | Wider Farid Sánchez Garzón |
@@ -114,6 +114,57 @@ Guardar los archivos **fuera de la base de datos**, en un **almacenamiento de ob
 - El procedimiento de respaldo y restauración se prueba de punta a punta al menos una vez antes de la entrega, y esa prueba es una de las evidencias.
 - El nombre original del usuario se escapa al mostrarlo en la interfaz: un nombre de archivo puede contener etiquetas.
 
+
+## Revisión del 2026-11-09: MinIO ya no es un SBB disponible
+
+El SBB elegido para el almacenamiento autoalojado era **MinIO**. Al escribir el adaptador real se
+descubrió que **MinIO cerró sus imágenes públicas**: ni `quay.io/minio/minio` ni `minio/minio` de
+Docker Hub ni `bitnami/minio` se pueden descargar sin credenciales. Se comprobó con `docker pull` y
+con `docker manifest inspect`.
+
+Eso no invalida la decisión de este ADR, y vale la pena ver por qué: lo que se decidió fue **hablar
+la API de S3**, no usar un producto. El adaptador no cambió ni una línea por esto. Lo que cambia es
+el SBB concreto que corre detrás, que era precisamente la pieza que este ADR declaraba sustituible.
+
+**Lo que se hizo:** el entorno local y las pruebas de integración usan ahora una implementación
+compatible con S3 que sí se puede descargar, la misma en los dos sitios, para que verifiquen contra
+lo mismo (factor X de los doce).
+
+**Lo que queda por decidir, en la Fase 4 con el despliegue:** qué servidor compatible con S3 corre
+en producción. El que se usa en local está pensado para desarrollo y pruebas, no para custodiar
+adjuntos reales. La candidata para producción es SeaweedFS; también procede volver a mirar un
+servicio gestionado si aparece presupuesto, que era la evolución que este ADR ya preveía.
+
+**Qué sustituto se eligió y por qué el primero no servía.** El primer candidato fue un simulador de
+S3 ligero. Con él, las pruebas funcionales pasaban y **las dos de seguridad fallaban**: servía los
+objetos sin comprobar la firma y hacía caso omiso de la caducidad. El fallo fue afortunado, porque
+el peligro real no era ese: era que, para dejarlas en verde, se relajaran las comprobaciones hasta
+que pasaran. Habrían quedado dos pruebas verdes que seguirían pasando el día que el adaptador
+dejara de firmar, y este ADR habría parecido verificado sin estarlo. **Un servidor de pruebas que no
+comprueba la autorización convierte una prueba de seguridad en decoración.**
+
+El sustituto actual sí valida firmas y sí hace cumplir la caducidad, así que **la segunda mitad de
+QA-SEG-02 está verificada de verdad**: una URL vencida no sirve el objeto.
+
+**El hueco que queda, dicho con claridad.** Ese servidor sigue atendiendo peticiones anónimas, cosa
+que S3 no hace con un contenedor recién creado. La prueba que comprueba que sin firma no se entra
+está escrita, pero **marcada como omitida**, porque aquí no significaría nada. La afirmación
+sostenible hoy es que el contenedor *se crea* privado y que la aplicación nunca lo hace público, no
+que se haya comprobado que rechaza a un anónimo. Esa comprobación es una tarea de la Fase 4 contra
+el almacenamiento del despliegue, y hasta entonces el hueco está aquí escrito y no tapado.
+
+**Dos defectos reales que estas pruebas encontraron en el adaptador**, y que son el argumento de por
+qué se escribieron contra un servidor real y no contra un doble:
+
+- Las URL prefirmadas se generaban con `https` aunque el endpoint fuera `http`, porque el SDK firma
+  en `https` por omisión. Contra el almacenamiento local, todas las descargas habrían fallado.
+- Asegurar el contenedor fallaba si ya existía, así que la aplicación no habría arrancado la segunda
+  vez, ni con más de una instancia. Hay una prueba de regresión para esto.
+
+**La lección, que es la que conviene sustentar:** un SBB puede desaparecer entre que se elige y se
+implementa. Lo que protegió al proyecto no fue acertar con el producto, sino haber puesto una API
+estándar detrás de un puerto. El coste de este cambio fue una línea de configuración y una imagen
+de contenedor.
 ## Referencias
 
 - Amazon Web Services. *Amazon S3 API Reference — Presigned URLs.*

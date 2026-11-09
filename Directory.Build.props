@@ -10,4 +10,22 @@
          (<versión>-<sha>, ADR-0016). Se sube a mano en cada entrega hacia main. -->
     <Version>0.1.0</Version>
   </PropertyGroup>
+
+  <!--
+    El paquete de S3 trae un analizador de Roslyn que en el equipo de desarrollo no se puede cargar:
+    Smart App Control bloquea ese ensamblado por ser nuevo y sin reputación, y la compilación falla
+    con CS8034. Es el mismo bloqueo que obliga a ejecutar las pruebas en contenedor.
+
+    `ExcludeAssets="analyzers"` en la referencia del paquete no lo quita, así que se retira aquí.
+    Va en la configuración raíz y no en un proyecto porque lo necesitan todos los que referencian
+    el SDK, directa o transitivamente.
+
+    No se pierde nada: ese analizador solo sugiere formas de usar la API de AWS y no afecta a lo que
+    se compila.
+  -->
+  <Target Name="QuitarAnalizadorDeAws" BeforeTargets="CoreCompile">
+    <ItemGroup>
+      <Analyzer Remove="@(Analyzer)" Condition="'%(Filename)' == 'AWSSDK.S3.CodeAnalysis'" />
+    </ItemGroup>
+  </Target>
 </Project>

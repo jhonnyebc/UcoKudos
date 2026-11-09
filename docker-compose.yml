@@ -27,25 +27,36 @@ services:
       retries: 5
 
   # Adjuntos (ADR-0012): contenedor PRIVADO. La API firma URL de vida corta; no hay lectura anónima.
+  #
+  # No es MinIO, y conviene saber por qué: MinIO cerró sus imágenes públicas, tanto las propias de
+  # quay.io como las de Bitnami, así que ya no se pueden descargar sin credenciales. Está anotado
+  # como revisión del 2026-11-09 en ADR-0012, porque cambia el SBB elegido.
+  #
+  # Esta implementación habla la API de S3, que es lo único de lo que depende el adaptador, y es la
+  # **misma** que usan las pruebas de integración, así que el entorno local y las pruebas verifican
+  # contra lo mismo (factor X de los doce). El almacenamiento de producción se decide en la Fase 4,
+  # con el despliegue.
+  #
+  # Se eligió esta y no otra por una razón concreta: comprueba las firmas y hace cumplir la
+  # caducidad de las URL prefirmadas. La alternativa que se probó primero servía cualquier objeto sin
+  # firma, de modo que las pruebas de seguridad de los adjuntos no habrían comprobado nada.
+  #
+  # El contenedor de adjuntos no se crea aquí: lo crea la aplicación al arrancar, y así queda uno
+  # solo creándolo, de la misma forma en local y en el servidor.
   objetos:
-    image: quay.io/minio/minio:RELEASE.2026-09-07T16-13-09Z
+    image: localstack/localstack:4.9
     container_name: ucokudos-objetos
     restart: unless-stopped
-    command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: ${OBJETOS_USUARIO:?Define OBJETOS_USUARIO en .env}
-      MINIO_ROOT_PASSWORD: ${OBJETOS_PASSWORD:?Define OBJETOS_PASSWORD en .env}
+      SERVICES: s3
+      # Que el servidor compruebe las firmas, como lo haría el de producción. Con esto desactivado
+      # el entorno local aceptaría peticiones mal firmadas y los errores aparecerían al desplegar.
+      S3_SKIP_SIGNATURE_VALIDATION: "0"
     ports:
       # Solo en el equipo local: en producción no se publica a internet (ADR-0016).
-      - "127.0.0.1:9000:9000"
-      - "127.0.0.1:9001:9001"
+      - "127.0.0.1:9000:4566"
     volumes:
-      - ucokudos-objetos:/data
-    healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ucokudos-objetos:/var/lib/localstack
 
   # Correo atrapado en local (ADR-0008): interfaz en http://localhost:8026, SMTP en 1025.
   # Permite revisar el HTML tal como lo verá el destinatario sin gastar cuota ni escribir a nadie.
