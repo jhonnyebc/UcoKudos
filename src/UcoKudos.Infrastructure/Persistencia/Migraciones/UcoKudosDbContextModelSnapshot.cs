@@ -146,7 +146,7 @@ namespace UcoKudos.Infrastructure.Persistencia.Migraciones
 
                     b.Property<string>("Datos")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("text")
                         .HasColumnName("datos");
 
                     b.Property<Guid>("EntidadId")

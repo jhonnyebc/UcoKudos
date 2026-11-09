@@ -139,7 +139,17 @@ internal sealed class ConfiguracionEventoAuditoria : IEntityTypeConfiguration<Ev
         entidad.Property(e => e.Accion).HasColumnName("accion").HasMaxLength(100).IsRequired();
         entidad.Property(e => e.TipoEntidad).HasColumnName("tipo_entidad").HasMaxLength(100).IsRequired();
         entidad.Property(e => e.EntidadId).HasColumnName("entidad_id");
-        entidad.Property(e => e.Datos).HasColumnName("datos").HasColumnType("jsonb").IsRequired();
+        // Texto y NO jsonb, y esta es la decisión más importante de este mapeo.
+        //
+        // El hash de la cadena se calcula sobre este texto (ADR-0013). Una columna jsonb **normaliza**
+        // el documento al guardarlo: reordena las claves y quita los espacios, así que el valor que
+        // se relee no es byte a byte el que se escribió y el hash recalculado no coincide. La
+        // verificación de la cadena fallaría sin que nadie hubiera alterado nada.
+        //
+        // Lo detectó una prueba de integración, que es exactamente el riesgo que ADR-0013 anticipaba.
+        // Se pierde la posibilidad de consultar dentro del documento, que ningún requisito pide: la
+        // auditoría se consulta por correlación, por entidad y por acción, y las tres son columnas.
+        entidad.Property(e => e.Datos).HasColumnName("datos").HasColumnType("text").IsRequired();
         entidad.Property(e => e.CorrelacionId).HasColumnName("correlacion_id").HasMaxLength(100);
         entidad.Property(e => e.HashAnterior).HasColumnName("hash_anterior").HasMaxLength(64);
         entidad.Property(e => e.Hash).HasColumnName("hash").HasMaxLength(64).IsRequired();

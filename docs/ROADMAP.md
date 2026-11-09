@@ -21,9 +21,18 @@ El alcance de cada fase respeta ADR-0019: el nivel 1 es intocable y el nivel 2 s
 | Twelve-Factor, Manifiesto Reactivo, desarrollo seguro, patrones, pirámide | Hecho |
 | Manual de puesta a punto | Hecho |
 | Estructura de 4 capas con pruebas de arquitectura y CI | Hecho |
-| **Backend de la línea base**: dominio, aplicación, infraestructura y API | En curso |
+| Backend de la línea base: dominio, aplicación, infraestructura y API | Hecho |
+| Dos migraciones: esquema inicial y disparador de auditoría + 15 categorías sembradas | Hecho |
+| Guía de la plantilla de WhatsApp | Hecho |
 
-**Criterio de cierre:** compila sin advertencias, formato limpio, pruebas unitarias y de arquitectura en verde, y ninguna carpeta de capa vacía.
+**Criterio de cierre: cumplido.** Compila sin advertencias, formato limpio y **121 pruebas en verde**: 96 unitarias, 6 de arquitectura y 19 de integración contra PostgreSQL real. Ninguna carpeta de capa vacía.
+
+**Lo que la Fase 0 dejó por hacer, y va a la Fase 1:** no hay repositorio remoto en GitHub (lo crea el usuario), ni pruebas de punta a punta, ni los adaptadores reales de los canales, que corren en modo simulado.
+
+**Dos hallazgos de esta fase que conviene recordar:**
+
+1. La prueba de arquitectura **detectó una violación real** de la regla 4: los endpoints de avisos y de salud usaban tipos de infraestructura. Se corrigió añadiendo dos puertos de entrada, no debilitando la regla. El compilador lo permitía, así que nada más lo habría encontrado.
+2. La prueba de integración **confirmó la trampa que ADR-0013 anticipaba**: con la columna de auditoría en `jsonb`, PostgreSQL normaliza el documento al guardarlo y el hash recalculado no coincidía. La columna pasó a texto. Es la clase de error que solo aparece contra la base real.
 
 ---
 

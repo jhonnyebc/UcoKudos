@@ -46,6 +46,8 @@ Toda la documentación está en Markdown (RT-01). Los diagramas están escritos 
 | Documento | Contenido |
 |---|---|
 | [MANUAL-PUESTA-A-PUNTO.md](MANUAL-PUESTA-A-PUNTO.md) | Cómo levantar la plataforma desde cero, cómo conectar cada proveedor externo y los problemas conocidos |
+| [GUIA-PLANTILLA-WHATSAPP.md](GUIA-PLANTILLA-WHATSAPP.md) | Paso a paso para enviar las plantillas a aprobación de Meta y generar el token que no caduca. **Es la tarea más urgente del proyecto** |
+| [ROADMAP.md](ROADMAP.md) | Plan de desarrollo por fases, con el criterio de cierre de cada una |
 
 ### Documentos de trabajo
 

@@ -218,7 +218,10 @@ public sealed class BandejaEventosTests(BaseDeDatosFixture baseDatos) : IAsyncLi
                 "prueba.evento",
                 "{\"indice\":" + i + "}",
                 Ahora.AddSeconds(i),
-                Ahora.AddSeconds(i),
+                // El próximo intento es Ahora para todos, no Ahora+i: el filtro del proceso es
+                // «proximo_intento <= ahora», así que sembrarlos en el futuro los dejaría fuera y la
+                // prueba no estaría midiendo lo que cree.
+                Ahora,
                 null));
         }
 

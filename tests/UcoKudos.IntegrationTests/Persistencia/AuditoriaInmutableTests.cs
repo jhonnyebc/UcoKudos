@@ -40,9 +40,11 @@ public sealed class AuditoriaInmutableTests(BaseDeDatosFixture baseDatos) : IAsy
 
         await using var contexto = baseDatos.CrearContexto();
 
+        // Sin llaves en el texto: la ejecución de SQL en crudo interpreta {0} como marcador de
+        // formato, así que un documento JSON literal haría fallar la prueba antes de llegar a la base.
         var error = await Assert.ThrowsAnyAsync<Exception>(() =>
             contexto.Database.ExecuteSqlRawAsync(
-                "UPDATE audit.evento_auditoria SET datos = '{\"alterado\":true}' WHERE id = 1"));
+                "UPDATE audit.evento_auditoria SET accion = 'alterado' WHERE id = 1"));
 
         Assert.Contains("solo insercion", error.Message, StringComparison.OrdinalIgnoreCase);
     }
