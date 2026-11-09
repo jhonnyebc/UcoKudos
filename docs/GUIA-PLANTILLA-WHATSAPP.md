@@ -60,10 +60,12 @@ La categoría importa: **Utilidad** es para avisos sobre algo que ocurrió, que 
 4. En el **cuerpo** del mensaje, escribe exactamente:
 
 ```text
-{{1}} te reconoció en la categoría {{2}}. Entra a UCO Kudos para verlo.
+Hola, {{1}} te reconoció en la categoría {{2}}. Entra a UCO Kudos para verlo.
 ```
 
 Los `{{1}}` y `{{2}}` son las dos variables, **en este orden**: autor y categoría. Es el orden en que el gateway las envía, así que invertirlas aquí haría que los mensajes salieran al revés.
+
+El «Hola,» del principio no es adorno: **Meta rechaza las plantillas que empiezan o terminan con una variable**. Se comprobó el 2026-11-09, cuando el editor no dejó enviar el cuerpo que empezaba directamente por `{{1}}`. El texto que envía el código no cambia por esto, porque el orden de las variables es el mismo.
 
 5. Meta pedirá **ejemplos** para las variables. Pon algo realista:
    - `{{1}}` → `Ana Gómez`
