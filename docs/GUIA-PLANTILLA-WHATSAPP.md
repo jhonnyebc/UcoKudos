@@ -79,27 +79,25 @@ El «Hola,» del principio no es adorno: **Meta rechaza las plantillas que empie
 
 6. **Envía la plantilla.**
 
-### 4. Crear la segunda plantilla
 
-Repite el paso 3 con la plantilla del código de verificación del celular (RF-02):
+### 4. La segunda plantilla: por qué no existe
 
-| Campo | Valor |
-|---|---|
-| **Categoría** | **Autenticación**, o **Utilidad** si la de autenticación no te deja personalizar el texto |
-| **Nombre** | `codigo_verificacion` |
-| **Idioma** | Español |
+La idea era una plantilla `codigo_verificacion` para verificar el celular (RF-02). **No se pudo crear, y conviene saber por qué antes de volver a intentarlo.**
 
-Cuerpo:
+Meta clasifica los códigos de verificación en la categoría **Autenticación** y no acepta otra: al intentar enviarla como Utilidad, el propio panel avisa de que «esta plantilla será rechazada». Y las plantillas de categoría Autenticación **no se pueden crear desde una cuenta de WhatsApp Business sin verificación comercial**: el panel responde «esta cuenta de WhatsApp Business no tiene permiso para crear una plantilla de mensaje». Se comprobó el 2026-11-09 con la cuenta de prueba.
 
-```text
-Hola, tu código de verificación es {{1}} y vence en {{2}} minutos.
-```
+La verificación comercial del negocio exige documentos y un plazo que no depende de nosotros, así que no es un camino viable antes de la entrega.
 
-Ejemplos: `{{1}}` → `482913`, `{{2}}` → `10`.
+**Qué se hizo en su lugar.** El mensaje del código de verificación sale por **correo** y queda como **aviso dentro de la aplicación**. El cambio son dos valores: el mensaje deja de declarar plantilla de WhatsApp en `CatalogoMensajes`, y su política de canal pasa a correo y tiempo real en `PoliticaCanal`.
+
+Ese detalle es defendible y vale la pena decirlo en la sustentación: **una restricción de un proveedor externo se absorbió cambiando dos valores de configuración, sin tocar el dominio, los casos de uso ni el gateway**. Es exactamente lo que ADR-0006 perseguía al separar el mensaje del canal; si en vez de eso cada caso de uso hubiera llamado a WhatsApp directamente, este cambio habría sido una cacería por todo el código.
+
+Si algún día se verifica el negocio, se crea la plantilla y se vuelve a poner su nombre en el catálogo: el canal se reactiva solo para ese mensaje.
+
 
 ### 5. Generar el token que no caduca
 
-Mientras se aprueban las plantillas, resuelve esto, porque es el otro tropiezo seguro.
+Mientras se aprueba la plantilla, resuelve esto, porque es el otro tropiezo seguro.
 
 El token que el portal muestra en **Configuración de la API** **caduca en unas horas**. Si lo usas, el canal funcionará hoy y mañana fallará, y perderás tiempo buscando un error que no existe.
 
@@ -155,7 +153,7 @@ Corregir y reenviar es rápido, pero vuelve a la cola de revisión: razón de m�
 
 1. Registrar los destinatarios de prueba, el del docente incluido.
 2. Enviar `kudo_recibido` a aprobación.
-3. Enviar `codigo_verificacion` a aprobación.
+3. El código de verificación **no lleva plantilla**: sale por correo y como aviso en la aplicación (sección 4).
 4. Generar el token de usuario del sistema, sin caducidad.
 
 Con eso, el riesgo P-01 queda en marcha y el resto del plan puede avanzar en paralelo con el adaptador simulado.

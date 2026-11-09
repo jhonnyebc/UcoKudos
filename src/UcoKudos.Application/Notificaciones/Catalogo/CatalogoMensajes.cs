@@ -88,7 +88,22 @@ public static class CatalogoMensajes
             "Código de verificación",
             "Tu código de verificación es {0}. Vence en {1} minutos.",
             ["codigo", "minutos"],
-            "codigo_verificacion")
+
+            // **Sin plantilla de WhatsApp, y es una decisión, no un olvido.**
+            //
+            // Meta clasifica los códigos de verificación en la categoría Autenticación, y las cuentas
+            // de WhatsApp Business sin verificación comercial no pueden crear plantillas de esa
+            // categoría. Se intentó el 2026-11-09 y el panel lo rechaza con «esta cuenta no tiene
+            // permiso para crear una plantilla de mensaje». Conseguir la verificación comercial exige
+            // documentos y un plazo que no controlamos.
+            //
+            // El mensaje sale igual, por correo y por el aviso dentro de la aplicación. Que esto se
+            // arregle cambiando un valor de este catálogo, sin tocar el dominio, los casos de uso ni
+            // el gateway, es precisamente lo que ADR-0006 perseguía al separar el mensaje del canal.
+            //
+            // Si algún día se verifica el negocio, se crea la plantilla y se vuelve a poner su nombre
+            // aquí: el canal se reactiva solo para este mensaje.
+            null)
     };
 
     public static Mensaje Por(string clave) =>

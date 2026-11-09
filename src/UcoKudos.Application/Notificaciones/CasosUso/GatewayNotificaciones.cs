@@ -28,7 +28,11 @@ public static class PoliticaCanal
         [ClavesMensaje.SolicitudAprobada] = [Canal.Correo, Canal.TiempoReal],
         [ClavesMensaje.SolicitudRechazada] = [Canal.Correo],
         [ClavesMensaje.ContenidoVetado] = [Canal.Correo, Canal.TiempoReal],
-        [ClavesMensaje.CodigoVerificacion] = [Canal.WhatsApp]
+        // Iba por WhatsApp, que es lo natural para verificar un celular, y se cambió el 2026-11-09
+        // por una restricción del proveedor: Meta no permite crear plantillas de categoría
+        // Autenticación en una cuenta sin verificación comercial. El motivo completo está en el
+        // catálogo, junto al mensaje. Sale por correo y queda como aviso dentro de la aplicación.
+        [ClavesMensaje.CodigoVerificacion] = [Canal.Correo, Canal.TiempoReal]
     };
 
     public static IReadOnlyList<Canal> Para(string claveMensaje) =>
