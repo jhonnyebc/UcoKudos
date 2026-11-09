@@ -60,10 +60,16 @@ La categoría importa: **Utilidad** es para avisos sobre algo que ocurrió, que 
 4. En el **cuerpo** del mensaje, escribe exactamente:
 
 ```text
-Hola, {{1}} te reconoció en la categoría {{2}}. Entra a UCO Kudos para verlo.
+Hola, recibiste un reconocimiento de {{1}} en la categoría {{2}} en tu cuenta de UCO Kudos.
 ```
 
 Los `{{1}}` y `{{2}}` son las dos variables, **en este orden**: autor y categoría. Es el orden en que el gateway las envía, así que invertirlas aquí haría que los mensajes salieran al revés.
+
+**Dos lecciones del envío real, el 2026-11-09:**
+
+- Meta **rechaza las plantillas que empiezan o terminan con una variable**. Por eso los dos cuerpos empiezan con «Hola,».
+- El clasificador de Meta avisó de que la plantilla del Kudo «será rechazada» como Utilidad porque la frase «Entra a UCO Kudos para verlo» le parecía promocional. Se reescribió para que describa un hecho ocurrido en una cuenta existente, que es la definición de Utilidad, y dejó de avisar. La categoría importa: Marketing está sujeta a que el usuario no haya desactivado promociones, y un aviso de reconocimiento no es una promoción.
+- La segunda plantilla va en **Utilidad y no en Autenticación** a propósito: la categoría Autenticación impone su propio formato, con botón de copiar código y su manejo de la caducidad, y eso obligaría a cambiar cómo el gateway arma el mensaje.
 
 El «Hola,» del principio no es adorno: **Meta rechaza las plantillas que empiezan o terminan con una variable**. Se comprobó el 2026-11-09, cuando el editor no dejó enviar el cuerpo que empezaba directamente por `{{1}}`. El texto que envía el código no cambia por esto, porque el orden de las variables es el mismo.
 
@@ -86,7 +92,7 @@ Repite el paso 3 con la plantilla del código de verificación del celular (RF-0
 Cuerpo:
 
 ```text
-Tu código de verificación es {{1}}. Vence en {{2}} minutos.
+Hola, tu código de verificación es {{1}} y vence en {{2}} minutos.
 ```
 
 Ejemplos: `{{1}}` → `482913`, `{{2}}` → `10`.
