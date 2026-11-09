@@ -79,6 +79,14 @@ public sealed class BaseDeDatosFixture : IAsyncLifetime
                 nucleo.facultad
             RESTART IDENTITY CASCADE;
             """);
+
+        // Las categorías NO se truncan: las siembra la migración y las pruebas se refieren a ellas
+        // por su identificador fijo. Pero sí se devuelven a su estado sembrado, porque una prueba que
+        // desactiva una categoría dejaría ese estado para las siguientes.
+        //
+        // Es un fallo de aislamiento que ya ocurrió: tres pruebas del flujo obligatorio empezaron a
+        // fallar con «la categoría ya no está disponible» por culpa de otra prueba, no del código.
+        await contexto.Database.ExecuteSqlRawAsync("UPDATE nucleo.categoria SET activa = true WHERE NOT activa;");
     }
 }
 
