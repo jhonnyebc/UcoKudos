@@ -54,7 +54,7 @@ docker compose ps
 | Servicio | Dirección en el equipo | Para qué |
 |---|---|---|
 | PostgreSQL | `localhost:5435` | Base de datos |
-| Almacenamiento de objetos | `localhost:9000`, consola en `localhost:9001` | Adjuntos |
+| Almacenamiento de objetos | `localhost:9000` | Adjuntos. No tiene consola web: se inspecciona con la API de S3 |
 | Correo capturado | `localhost:8026` | Ver el correo sin enviarlo a nadie |
 | Observabilidad | `localhost:18890` | Trazas, métricas y logs |
 
@@ -72,9 +72,31 @@ curl http://localhost:8082/salud/vivo
 
 Debe responder `Healthy`.
 
-## 5. Base de datos (pendiente)
+## 5. Base de datos
 
-Las migraciones se aplican con la herramienta de Entity Framework en cuanto exista la primera. Se documentará el comando aquí.
+Con los contenedores arriba, aplicar las migraciones:
+
+```powershell
+./scripts/migrar.ps1
+```
+
+Crea el esquema completo y siembra las 15 categorías y los 7 roles. Es idempotente: volver a ejecutarlo cuando no hay nada nuevo no hace nada.
+
+Comprobar que quedó bien:
+
+```powershell
+docker compose exec -T postgres psql -U ucokudos -d ucokudos -c "\dt nucleo.*"
+```
+
+Deben aparecer cuatro esquemas en total: `nucleo` con las entidades principales, `notif` con la bandeja de salida y los avisos, `interaccion` con las réplicas y reacciones, y `audit` con la tabla de solo inserción.
+
+### Por qué en un contenedor, otra vez
+
+`dotnet ef database update` directo en este equipo falla con `Could not load assembly 'UcoKudos.Infrastructure'`. El mensaje es engañoso: el ensamblado existe y está referenciado. Lo que falla es **cargarlo**, por la misma razón que con las pruebas (sección 6): Smart App Control bloquea los ensamblados recién compilados sin reputación.
+
+El script copia el código a una carpeta interna del contenedor en lugar de trabajar sobre el repositorio montado. La herramienta de migraciones compila por su cuenta y no respeta la carpeta de artefactos, así que escribiría `bin/` y `obj/` de Linux encima de los de Windows, y mezclarlos rompe las dos compilaciones porque los archivos intermedios guardan rutas absolutas.
+
+La cadena de conexión se arma dentro del contenedor leyendo el `.env`, y viaja por variable de entorno: no se escribe en ningún archivo ni se imprime en la consola.
 
 ## 6. Ejecutar las pruebas
 
