@@ -95,6 +95,7 @@ public static class ServiciosInfraestructura
     private static void AgregarLectura(IServiceCollection servicios)
     {
         servicios.AddScoped<IConsultasMuro, ConsultasMuroEf>();
+        servicios.AddScoped<IConsultasAvisos, ConsultasAvisosEf>();
 
         // La caché es singleton: compartirla entre peticiones es justamente su razón de existir.
         servicios.AddSingleton<CacheMemoria>();
@@ -196,6 +197,7 @@ public static class ServiciosInfraestructura
 
     private static void AgregarCasosUso(IServiceCollection servicios)
     {
+        servicios.AddScoped<ConsultarAvisosCasoUso>();
         servicios.AddScoped<ServicioAuditoria>();
 
         servicios.AddScoped<PublicarKudoCasoUso>();

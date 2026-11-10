@@ -24,9 +24,26 @@ public static class ContextoUsuario
     /// <summary>
     /// Claim del que sale el correo institucional. Se intentan varios porque los proveedores no
     /// coinciden en cuál usan.
+    ///
+    /// **El primero existe por un hallazgo concreto, no por precaución.** Al conectar el proveedor
+    /// real, la API recibía como identidad `google-oauth2|101592…` e intentaba usarlo como
+    /// dirección de correo. El motivo: el correo viaja en el **token de identidad**, que es para el
+    /// cliente, y no en el **token de acceso**, que es el que llega aquí. Son dos tokens distintos
+    /// con propósitos distintos, y confundirlos es un error clásico de OIDC.
+    ///
+    /// La solución estándar es que el proveedor añada el correo como claim propio al token de
+    /// acceso, con un nombre con espacio de nombres para no chocar con los del estándar. Eso es
+    /// configuración del proveedor; está en el manual de puesta a punto y aquí solo se lee.
+    ///
+    /// **`NameIdentifier` va el último a propósito:** es el identificador del proveedor, no un
+    /// correo. Está para que el error diga a quién no se pudo identificar en lugar de fallar sin
+    /// decir nada, y la validación posterior lo rechaza por no ser una dirección.
     /// </summary>
+    private const string ClaimCorreoPropio = "https://ucokudos.co/email";
+
     private static readonly string[] ClaimsDeCorreo =
     [
+        ClaimCorreoPropio,
         ClaimTypes.Email,
         "email",
         "preferred_username",

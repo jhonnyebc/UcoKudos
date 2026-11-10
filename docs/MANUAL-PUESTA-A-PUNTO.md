@@ -182,6 +182,30 @@ Crear la aplicación en el proveedor de identidad y poner el emisor en `IDENTIDA
 
 El contenedor de adjuntos debe quedar **privado**: sin lectura anónima. La API firma URL de vida corta después de comprobar permisos. Un contenedor público haría irrelevante toda la estrategia de seguridad de los adjuntos.
 
+
+### 7.6 El correo en el token de acceso (ADR-0004)
+
+Hay un paso del proveedor de identidad que no es evidente y que, si falta, hace que **todas** las peticiones autenticadas fallen con un error confuso.
+
+ADR-0004 dice que el token aporta la identidad: el correo institucional. Pero un proveedor OIDC emite **dos** tokens con propósitos distintos: el de identidad, que es para el cliente y sí lleva el correo, y el de acceso, que es el que llega a la API y **no lo lleva**. Sin este paso, la API recibe como identidad algo como `google-oauth2|101592…` e intenta usarlo como dirección de correo.
+
+Se arregla pidiéndole al proveedor que añada el correo como claim propio del token de acceso. En Auth0, en **Actions → Library → Create Action**, de tipo *Login / Post Login*:
+
+```javascript
+exports.onExecutePostLogin = async (event, api) => {
+  // El nombre lleva espacio de nombres a propósito: un proveedor descarta los claims propios que
+  // no lo tengan, para que no choquen con los del estándar.
+  if (event.user.email) {
+    api.accessToken.setCustomClaim('https://ucokudos.co/email', event.user.email);
+  }
+};
+```
+
+Después hay que **desplegarla y arrastrarla al flujo de Login**, en Actions → Flows → Login. Crearla sin añadirla al flujo no tiene ningún efecto, y es el descuido habitual.
+
+El nombre del claim tiene que coincidir con el que lee `ContextoUsuario`. Si se cambia aquí, hay que cambiarlo allí.
+
+**Una advertencia que ahorra tiempo:** el correo del proveedor tiene que corresponder a una persona registrada en la plataforma. Si no, la API responde que no existe una cuenta para esa dirección, y es el comportamiento correcto: autenticarse no es lo mismo que tener cuenta.
 ## 8. Despliegue en el servidor (pendiente)
 
 El pipeline de despliegue publica la imagen y la reemplaza en el servidor (ADR-0016). Queda por documentar: creación de la máquina, instalación de Docker, proxy inverso con HTTPS, archivo de entorno con permisos restringidos y procedimiento de respaldo.

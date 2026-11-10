@@ -126,3 +126,43 @@ public interface IRepositorioAvisos
 
     void AgregarAviso(Guid personaId, string claveMensaje, string variablesJson, DateTimeOffset ahora);
 }
+
+/// <summary>
+/// Lado de lectura de los avisos (ADR-0010).
+///
+/// Está separado de <see cref="IRepositorioAvisos"/> a propósito, y no por simetría: aquel escribe
+/// dentro de la transacción del gateway, este solo lee para pintar una pantalla. Mezclarlos haría
+/// que una consulta de lectura arrastrara el seguimiento de cambios de la unidad de trabajo, que es
+/// trabajo desperdiciado en el camino que más se recorre.
+///
+/// Devuelve filas planas y no entidades: lo que la pantalla necesita, nada más.
+/// </summary>
+public interface IConsultasAvisos
+{
+    /// <summary>
+    /// Los avisos de una persona, del más reciente al más antiguo.
+    ///
+    /// Se pide un tamaño porque una bandeja vieja puede tener miles y nadie baja hasta el final.
+    /// Devuelve también cuántos quedan sin leer **en total**, no solo en esta página.
+    /// </summary>
+    Task<(IReadOnlyList<FilaAviso> Elementos, int SinLeer)> DeLaPersonaAsync(
+        Guid personaId, int tamano, CancellationToken ct);
+
+    /// <summary>
+    /// Marca un aviso como leído, **solo si es de esa persona**.
+    ///
+    /// La comprobación de propiedad va en la misma operación y no en una consulta previa: entre
+    /// comprobar y escribir hay una ventana, y además así es imposible olvidarla. Devuelve false si
+    /// el aviso no existe o es de otra persona, que desde fuera es lo mismo: nadie debe poder
+    /// averiguar qué avisos tienen los demás.
+    /// </summary>
+    Task<bool> MarcarLeidoAsync(Guid personaId, long avisoId, CancellationToken ct);
+}
+
+/// <summary>Un aviso tal como está guardado: la clave del mensaje y sus variables, sin componer.</summary>
+public sealed record FilaAviso(
+    long Id,
+    string ClaveMensaje,
+    string VariablesJson,
+    bool Leido,
+    DateTimeOffset GeneradoEn);

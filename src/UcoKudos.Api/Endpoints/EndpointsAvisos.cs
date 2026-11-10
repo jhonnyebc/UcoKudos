@@ -95,6 +95,46 @@ public static class EndpointsAvisos
             "Mientras esta conexión esté abierta, los avisos llegan por aquí y no se envía Web Push, "
             + "para no notificar dos veces lo mismo.");
 
+
+        // --- La bandeja de avisos (RF-16) ---
+        //
+        // Es lo que hace cierta la promesa de ADR-0009. El canal en vivo es efímero y Web Push
+        // puede no llegar nunca —navegador cerrado, suscripción caducada, permiso denegado—, así
+        // que el aviso se guarda siempre y esta es la pantalla donde aparece.
+        //
+        // No recibe ningún identificador de persona: quién pregunta lo dice el token.
+        grupo.MapGet("/", async (
+            int? tamano,
+            IAvisosPuertoEntrada avisos,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            return Results.Ok(await avisos.MisAvisosAsync(contexto, tamano, ct));
+        })
+        .WithName("MisAvisos")
+        .WithSummary("Los avisos de quien pregunta, del más reciente al más antiguo")
+        .WithDescription(
+            "Incluye cuántos quedan sin leer en total, no solo en esta página: es lo que la interfaz "
+            + "necesita para el contador, y calcularlo desde la página daría un número equivocado.");
+
+        grupo.MapPost("/{avisoId:long}/leido", async (
+            long avisoId,
+            IAvisosPuertoEntrada avisos,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            await avisos.MarcarLeidoAsync(contexto, avisoId, ct);
+            return Results.NoContent();
+        })
+        .WithName("MarcarAvisoLeido")
+        .WithSummary("Marca un aviso propio como leído")
+        .WithDescription(
+            "Un aviso de otra persona responde igual que uno inexistente: distinguirlos permitiría "
+            + "averiguar qué avisos tienen los demás probando identificadores.");
         // La clave pública VAPID NO es secreta: el cliente la necesita para suscribirse. La privada
         // sí, y nunca sale de la configuración del servidor (ADR-0009, ADR-0018).
         grupo.MapGet("/clave-publica", (IAvisosPuertoEntrada avisos) =>

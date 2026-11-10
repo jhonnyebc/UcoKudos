@@ -1,5 +1,8 @@
 using System.Threading.Channels;
+using UcoKudos.Application.Comun;
 using UcoKudos.Application.Comun.Entrada.Puertos;
+using UcoKudos.Application.Notificaciones.CasosUso;
+using UcoKudos.Application.Notificaciones.Entrada.Dto;
 using UcoKudos.Infrastructure.Notificaciones;
 using UcoKudos.Infrastructure.Persistencia;
 
@@ -9,7 +12,10 @@ namespace UcoKudos.Infrastructure.Plataforma;
 /// Adaptador del puerto de avisos: envuelve el canal de SSE y la configuración de Web Push, de modo
 /// que la capa de interfaces no conozca ninguno de los dos (ADR-0001, regla 4).
 /// </summary>
-public sealed class AvisosAdaptadorEntrada(AvisosEnVivoSse avisos, OpcionesPush opciones) : IAvisosPuertoEntrada
+public sealed class AvisosAdaptadorEntrada(
+    AvisosEnVivoSse avisos,
+    OpcionesPush opciones,
+    ConsultarAvisosCasoUso bandeja) : IAvisosPuertoEntrada
 {
     public (Guid ConexionId, ChannelReader<string> Lector) Abrir(Guid personaId) => avisos.Abrir(personaId);
 
@@ -17,6 +23,12 @@ public sealed class AvisosAdaptadorEntrada(AvisosEnVivoSse avisos, OpcionesPush 
 
     public string? ClavePublicaPush() =>
         string.IsNullOrWhiteSpace(opciones.ClavePublica) ? null : opciones.ClavePublica;
+
+    public Task<PaginaAvisosDto> MisAvisosAsync(ContextoPeticion contexto, int? tamano, CancellationToken ct) =>
+        bandeja.MisAvisosAsync(contexto, tamano, ct);
+
+    public Task MarcarLeidoAsync(ContextoPeticion contexto, long avisoId, CancellationToken ct) =>
+        bandeja.MarcarLeidoAsync(contexto, avisoId, ct);
 }
 
 /// <summary>

@@ -1,4 +1,5 @@
 using System.Threading.Channels;
+using UcoKudos.Application.Notificaciones.Entrada.Dto;
 
 namespace UcoKudos.Application.Comun.Entrada.Puertos;
 
@@ -33,6 +34,18 @@ public interface IAvisosPuertoEntrada
     /// usuario lo ve al entrar.
     /// </summary>
     string? ClavePublicaPush();
+
+    /// <summary>
+    /// La bandeja de avisos de quien pregunta (RF-16).
+    ///
+    /// Recibe el contexto de la petición, no un identificador de persona: **quién pregunta lo dice
+    /// el token, no el cliente**. Aceptar un identificador por parámetro dejaría que cualquiera
+    /// pidiera los avisos de otro con solo cambiarlo en la URL.
+    /// </summary>
+    Task<PaginaAvisosDto> MisAvisosAsync(ContextoPeticion contexto, int? tamano, CancellationToken ct);
+
+    /// <summary>Marca un aviso propio como leído. Falla si no es de quien pregunta.</summary>
+    Task MarcarLeidoAsync(ContextoPeticion contexto, long avisoId, CancellationToken ct);
 }
 
 /// <summary>
