@@ -56,17 +56,29 @@ public sealed class EnviadorCorreoSmtp(OpcionesCorreo opciones) : IEnviadorCorre
             if (!string.IsNullOrWhiteSpace(opciones.Usuario))
                 cliente.Credentials = new System.Net.NetworkCredential(opciones.Usuario, opciones.Password);
 
-            using var mensaje = new MailMessage(opciones.Remitente, destino)
-            {
-                Subject = asunto,
-                Body = cuerpoHtml,
-                IsBodyHtml = true
-            };
+            using var mensaje = new MailMessage(opciones.Remitente, destino) { Subject = asunto };
 
-            // Alternativa en texto plano: algunos clientes la prefieren y los filtros de correo no
-            // deseado desconfían de un mensaje que solo trae HTML.
+            // **Las dos versiones se declaran como vistas y el cuerpo se deja vacío, a propósito.**
+            //
+            // La versión anterior ponía el HTML en `Body` con `IsBodyHtml` y añadía además una
+            // vista de texto. El resultado era un mensaje con dos partes **las dos marcadas
+            // text/plain**: el HTML viajaba etiquetado como texto, así que ningún cliente lo
+            // pintaba y quien abriera el correo veía las etiquetas en crudo. Mezclar `Body` con
+            // vistas alternativas hace que el cuerpo pierda su tipo.
+            //
+            // Se descubrió mirando el correo capturado, no leyendo el código: el envío se reportaba
+            // correcto porque, para SMTP, lo fue.
+            //
+            // La alternativa en texto plano se mantiene porque algunos clientes la prefieren y los
+            // filtros de correo no deseado desconfían de un mensaje que solo trae HTML.
+            //
+            // **El orden importa:** en un mensaje de alternativas el cliente usa la última que
+            // entiende, así que la versión rica va al final. Al revés, todos mostrarían el texto.
             mensaje.AlternateViews.Add(
                 AlternateView.CreateAlternateViewFromString(cuerpoTexto, null, "text/plain"));
+
+            mensaje.AlternateViews.Add(
+                AlternateView.CreateAlternateViewFromString(cuerpoHtml, null, "text/html"));
 
             await cliente.SendMailAsync(mensaje, ct);
 

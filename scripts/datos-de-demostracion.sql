@@ -57,7 +57,14 @@ VALUES
      'Ana Gómez', true, true, true, 'Activa', now()),
 
     ('0193b000-0000-7000-8000-000000000014', 'estudiante@uco.edu.co', '+573000000005',
-     'Luis Peña Muñoz', true, true, true, 'Activa', now())
+     'Luis Peña Muñoz', true, true, true, 'Activa', now()),
+
+    -- Segunda identidad de prueba. El correo es real y el nombre no: sirve para enseñar la
+    -- plataforma con dos personas distintas a la vez, que es la unica forma de ver llegar un aviso
+    -- en vivo. Docente del mismo programa, para que pueda reconocer y ser reconocida sin tropezar
+    -- con las reglas de jerarquia.
+    ('0193b000-0000-7000-8000-000000000015', 'jhonny.benitez5293@uco.net.co', '+573000000006',
+     'Sara Montoya Arango', true, true, true, 'Activa', now())
 -- Al repetir se actualiza el nombre en lugar de no hacer nada, para que volver a ejecutarlo
 -- **corrija** datos mal sembrados antes. Hizo falta: una primera versión del guion rompió las
 -- tildes al enviar este archivo por una tubería de PowerShell, y «Peña» quedó como «PeÃ±a» en la
@@ -90,6 +97,9 @@ VALUES
      '0193b000-0000-7000-8000-000000000001', '0193b000-0000-7000-8000-000000000002', true, now()),
 
     ('0193b000-0000-7000-8000-000000000024', '0193b000-0000-7000-8000-000000000014', 7,
+     '0193b000-0000-7000-8000-000000000001', '0193b000-0000-7000-8000-000000000002', true, now()),
+
+    ('0193b000-0000-7000-8000-000000000025', '0193b000-0000-7000-8000-000000000015', 6,
      '0193b000-0000-7000-8000-000000000001', '0193b000-0000-7000-8000-000000000002', true, now())
 ON CONFLICT (id) DO NOTHING;
 
