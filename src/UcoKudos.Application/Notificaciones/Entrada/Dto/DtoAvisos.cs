@@ -29,3 +29,12 @@ public sealed record AvisoDto(
 /// la página daría un número equivocado en cuanto haya más de una.
 /// </summary>
 public sealed record PaginaAvisosDto(IReadOnlyList<AvisoDto> Elementos, int SinLeer);
+
+/// <summary>
+/// Lo que el navegador entrega al suscribirse a Web Push.
+///
+/// Las dos claves son del **navegador**, no de la plataforma: con ellas el servicio de push cifra
+/// el contenido del aviso de modo que solo ese navegador pueda leerlo. Ni el servicio de push ni
+/// nadie en el camino ve el texto, y por eso el aviso puede decir quién reconoció a quién.
+/// </summary>
+public sealed record SuscripcionPushDto(string Endpoint, string ClaveP256dh, string ClaveAuth);

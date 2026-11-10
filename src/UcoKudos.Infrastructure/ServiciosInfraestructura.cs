@@ -99,6 +99,7 @@ public static class ServiciosInfraestructura
 
         // La caché es singleton: compartirla entre peticiones es justamente su razón de existir.
         servicios.AddSingleton<CacheMemoria>();
+        servicios.AddScoped<ISuscripcionesPush, SuscripcionesPushEf>();
         servicios.AddSingleton<ICacheConsultas>(sp => sp.GetRequiredService<CacheMemoria>());
     }
 

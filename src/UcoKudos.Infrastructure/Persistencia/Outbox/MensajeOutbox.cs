@@ -157,6 +157,24 @@ public sealed class SuscripcionPushFila
     /// generaría un fallo permanente en cada publicación.
     /// </summary>
     public void Desactivar() => Activa = false;
+
+    /// <summary>
+    /// Pasa la suscripción a otra persona y actualiza sus claves.
+    ///
+    /// El endpoint identifica al **navegador**, no a la persona, y un navegador puede cambiar de
+    /// dueño: una sala de cómputo de la universidad es el caso evidente. Si no se reasignara, quien
+    /// usara ese equipo después recibiría los avisos del anterior.
+    ///
+    /// Reactivarla también es deliberado: quien vuelve a dar permiso espera volver a recibir
+    /// avisos, no quedarse con una suscripción apagada por un rechazo antiguo.
+    /// </summary>
+    public void Reasignar(Guid personaId, string claveP256dh, string claveAuth)
+    {
+        PersonaId = personaId;
+        ClaveP256dh = claveP256dh;
+        ClaveAuth = claveAuth;
+        Activa = true;
+    }
 }
 
 /// <summary>

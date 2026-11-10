@@ -46,6 +46,12 @@ public interface IAvisosPuertoEntrada
 
     /// <summary>Marca un aviso propio como leído. Falla si no es de quien pregunta.</summary>
     Task MarcarLeidoAsync(ContextoPeticion contexto, long avisoId, CancellationToken ct);
+
+    /// <summary>Registra la suscripción de este navegador a Web Push para quien pregunta.</summary>
+    Task SuscribirPushAsync(ContextoPeticion contexto, SuscripcionPushDto datos, CancellationToken ct);
+
+    /// <summary>Da de baja la suscripción de este navegador.</summary>
+    Task CancelarPushAsync(ContextoPeticion contexto, string endpoint, CancellationToken ct);
 }
 
 /// <summary>

@@ -3,6 +3,7 @@ using UcoKudos.Application.Comun;
 using UcoKudos.Application.Comun.Entrada.Puertos;
 using UcoKudos.Application.Notificaciones.CasosUso;
 using UcoKudos.Application.Notificaciones.Entrada.Dto;
+using UcoKudos.Application.Notificaciones.Salida.Puertos;
 using UcoKudos.Infrastructure.Notificaciones;
 using UcoKudos.Infrastructure.Persistencia;
 
@@ -15,7 +16,8 @@ namespace UcoKudos.Infrastructure.Plataforma;
 public sealed class AvisosAdaptadorEntrada(
     AvisosEnVivoSse avisos,
     OpcionesPush opciones,
-    ConsultarAvisosCasoUso bandeja) : IAvisosPuertoEntrada
+    ConsultarAvisosCasoUso bandeja,
+    ISuscripcionesPush suscripciones) : IAvisosPuertoEntrada
 {
     public (Guid ConexionId, ChannelReader<string> Lector) Abrir(Guid personaId) => avisos.Abrir(personaId);
 
@@ -29,6 +31,22 @@ public sealed class AvisosAdaptadorEntrada(
 
     public Task MarcarLeidoAsync(ContextoPeticion contexto, long avisoId, CancellationToken ct) =>
         bandeja.MarcarLeidoAsync(contexto, avisoId, ct);
+
+    public Task SuscribirPushAsync(ContextoPeticion contexto, SuscripcionPushDto datos, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contexto);
+        ArgumentNullException.ThrowIfNull(datos);
+
+        return suscripciones.RegistrarAsync(
+            contexto.Ambito.PersonaId, datos.Endpoint, datos.ClaveP256dh, datos.ClaveAuth, ct);
+    }
+
+    public Task CancelarPushAsync(ContextoPeticion contexto, string endpoint, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contexto);
+
+        return suscripciones.DarDeBajaAsync(contexto.Ambito.PersonaId, endpoint, ct);
+    }
 }
 
 /// <summary>

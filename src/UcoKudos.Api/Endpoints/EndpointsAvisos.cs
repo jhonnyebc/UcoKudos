@@ -1,6 +1,7 @@
 using System.Globalization;
 using UcoKudos.Api.Plataforma;
 using UcoKudos.Application.Comun.Entrada.Puertos;
+using UcoKudos.Application.Notificaciones.Entrada.Dto;
 using UcoKudos.Domain.Identidad.Repositorios;
 
 namespace UcoKudos.Api.Endpoints;
@@ -135,6 +136,42 @@ public static class EndpointsAvisos
         .WithDescription(
             "Un aviso de otra persona responde igual que uno inexistente: distinguirlos permitiría "
             + "averiguar qué avisos tienen los demás probando identificadores.");
+
+        // --- Suscripción a Web Push (ADR-0009) ---
+        //
+        // El cliente envía lo que le dio el navegador. Es idempotente por endpoint a propósito: el
+        // navegador devuelve siempre la misma suscripción y el cliente la manda en cada arranque,
+        // así que sin eso la tabla crecería una fila por visita.
+        grupo.MapPost("/suscripciones", async (
+            SuscripcionPushDto datos,
+            IAvisosPuertoEntrada avisos,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            await avisos.SuscribirPushAsync(contexto, datos, ct);
+            return Results.NoContent();
+        })
+        .WithName("SuscribirAvisosPush")
+        .WithSummary("Registra este navegador para recibir avisos push")
+        .WithDescription(
+            "Las claves son del navegador: con ellas el servicio de push cifra el aviso de modo que "
+            + "solo ese navegador pueda leerlo. Nadie en el camino ve el texto.");
+
+        grupo.MapDelete("/suscripciones", async (
+            string endpoint,
+            IAvisosPuertoEntrada avisos,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            await avisos.CancelarPushAsync(contexto, endpoint, ct);
+            return Results.NoContent();
+        })
+        .WithName("CancelarAvisosPush")
+        .WithSummary("Da de baja este navegador de los avisos push");
         // La clave pública VAPID NO es secreta: el cliente la necesita para suscribirse. La privada
         // sí, y nunca sale de la configuración del servidor (ADR-0009, ADR-0018).
         grupo.MapGet("/clave-publica", (IAvisosPuertoEntrada avisos) =>

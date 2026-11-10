@@ -166,3 +166,32 @@ public sealed record FilaAviso(
     string VariablesJson,
     bool Leido,
     DateTimeOffset GeneradoEn);
+
+/// <summary>
+/// Alta y baja de las suscripciones a Web Push (ADR-0009).
+///
+/// Está separado de <see cref="IRepositorioAvisos"/>, que es el que usa el gateway al enviar: ahí
+/// solo se leen y se desactivan; aquí se registran. Son dos momentos distintos del ciclo de vida y
+/// dos consumidores distintos.
+/// </summary>
+public interface ISuscripcionesPush
+{
+    /// <summary>
+    /// Registra la suscripción de un navegador, o la reactiva si ya existía.
+    ///
+    /// **Es idempotente por endpoint, y tiene que serlo.** El navegador devuelve la misma
+    /// suscripción cada vez que se le pregunta, y el cliente la envía en cada arranque; sin esto,
+    /// la tabla acumularía una fila por visita y cada Kudo generaría decenas de envíos al mismo
+    /// destino.
+    /// </summary>
+    Task RegistrarAsync(
+        Guid personaId, string endpoint, string claveP256dh, string claveAuth, CancellationToken ct);
+
+    /// <summary>
+    /// Da de baja una suscripción de esa persona. Se usa cuando el usuario desactiva los avisos.
+    ///
+    /// La propiedad se comprueba en la misma consulta: una suscripción de otro simplemente no se
+    /// encuentra, así que nadie puede dar de baja los avisos ajenos.
+    /// </summary>
+    Task DarDeBajaAsync(Guid personaId, string endpoint, CancellationToken ct);
+}
