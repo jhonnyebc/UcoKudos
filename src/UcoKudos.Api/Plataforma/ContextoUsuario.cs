@@ -61,6 +61,22 @@ public static class ContextoUsuario
             .FirstOrDefault(valor => !string.IsNullOrWhiteSpace(valor))
             ?? throw new ExcepcionAutorizacion("El token no identifica a ninguna persona.");
 
+        // Si lo que llegó no es una dirección, lo más probable es que falte el claim del correo en
+        // el token de acceso (sección 7.6 del manual). El error por sí solo no lo sugiere, así que
+        // se registra **qué claims trae el token**: los nombres, nunca los valores. Sin esta pista,
+        // el síntoma —un identificador del proveedor tratado como correo— no apunta a su causa.
+        if (!correo.Contains('@', StringComparison.Ordinal))
+        {
+            http.RequestServices
+                .GetRequiredService<ILoggerFactory>()
+                .CreateLogger(nameof(ContextoUsuario))
+                .LogWarning(
+                    "El token no trae un correo. Claims recibidos: {Claims}. "
+                    + "Revisar el claim {ClaimEsperado} en el proveedor de identidad.",
+                    string.Join(", ", http.User.Claims.Select(c => c.Type).Distinct()),
+                    ClaimCorreoPropio);
+        }
+
         var persona = await personas.PorCorreoAsync(correo, ct)
                       ?? throw new ExcepcionAutorizacion("No existe una cuenta para " + correo + ".");
 
