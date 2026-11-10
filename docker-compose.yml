@@ -81,6 +81,63 @@ services:
       - "127.0.0.1:${OBSERVABILIDAD_PUERTO:-18890}:18888"
       - "127.0.0.1:4317:18889"
 
+  # La API, en contenedor también en local (ADR-0016).
+  #
+  # No es solo por paridad con producción, que ya sería razón suficiente: en el equipo de
+  # desarrollo **no se puede ejecutar de otra forma**. Smart App Control bloquea la carga de los
+  # ensamblados recién compilados, así que `dotnet run` muere al arrancar con
+  # «An Application Control policy has blocked this file (0x800711C7)». Es lo mismo que obliga a
+  # correr las pruebas y las migraciones en contenedor.
+  #
+  # Los nombres de servicio sustituyen a localhost: dentro de la red de Docker, la base es
+  # `postgres` y no `localhost`. Es el error más fácil de cometer al pasar de uno a otro.
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ucokudos-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_HTTP_PORTS: 8080
+
+      ConnectionStrings__Postgres: "Host=postgres;Port=5432;Database=${POSTGRES_BD:-ucokudos};Username=${POSTGRES_USUARIO:?};Password=${POSTGRES_PASSWORD:?}"
+
+      UcoKudos__Identidad__Emisor: ${IDENTIDAD_EMISOR:-}
+      UcoKudos__Identidad__Audiencia: ${IDENTIDAD_AUDIENCIA:-}
+
+      UcoKudos__WhatsApp__Proveedor: ${WHATSAPP_PROVEEDOR:-Simulado}
+      UcoKudos__WhatsApp__PhoneNumberId: ${WHATSAPP_PHONE_NUMBER_ID:-}
+      UcoKudos__WhatsApp__VersionGraph: ${WHATSAPP_VERSION_GRAPH:-v23.0}
+      UcoKudos__WhatsApp__AccessToken: ${WHATSAPP_ACCESS_TOKEN:-}
+
+      # En local el correo va al contenedor de captura, que no pide usuario ni cifrado.
+      UcoKudos__Correo__Proveedor: ${SMTP_PROVEEDOR:-Smtp}
+      UcoKudos__Correo__Host: ${SMTP_HOST:-mailpit}
+      UcoKudos__Correo__Puerto: ${SMTP_PUERTO:-1025}
+      UcoKudos__Correo__Remitente: ${SMTP_REMITENTE:-no-responder@ucokudos.local}
+      UcoKudos__Correo__Usuario: ${SMTP_USUARIO:-}
+      UcoKudos__Correo__Password: ${SMTP_PASSWORD:-}
+      UcoKudos__Correo__UsarTls: ${SMTP_TLS:-false}
+
+      UcoKudos__Push__Asunto: ${VAPID_ASUNTO:-mailto:no-responder@ucokudos.local}
+      UcoKudos__Push__ClavePublica: ${VAPID_CLAVE_PUBLICA:-}
+      UcoKudos__Push__ClavePrivada: ${VAPID_CLAVE_PRIVADA:-}
+
+      UcoKudos__Objetos__Proveedor: ${OBJETOS_PROVEEDOR:-S3}
+      UcoKudos__Objetos__Endpoint: http://objetos:4566
+      UcoKudos__Objetos__Contenedor: ${OBJETOS_CONTENEDOR:-adjuntos}
+      UcoKudos__Objetos__Usuario: ${OBJETOS_USUARIO:-test}
+      UcoKudos__Objetos__Password: ${OBJETOS_PASSWORD:?}
+
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://observabilidad:18889
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-ucokudos-api}
+    ports:
+      - "127.0.0.1:${API_PUERTO:-8082}:8080"
+
 volumes:
   ucokudos-pgdata:
   ucokudos-objetos:

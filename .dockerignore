@@ -1,0 +1,34 @@
+# Qué NO entra en el contexto de construcción de la imagen.
+#
+# Sin este archivo la imagen no se podía construir en un equipo de desarrollo, y el motivo cuesta
+# de ver: al copiar el código entraban también las carpetas obj/ de Windows, que pisaban el
+# project.assets.json generado por la restauración del contenedor. Ese archivo guarda **rutas
+# absolutas** a la caché de paquetes, así que dentro de Linux apuntaban a C:\Users\... y la
+# compilación fallaba con «Package AWSSDK.S3 was not found», que no tiene nada que ver con lo que
+# pasaba de verdad.
+#
+# En el pipeline nunca falló porque el checkout está limpio y no hay bin/ ni obj/. Es justo la
+# clase de diferencia entre el equipo y el CI que conviene eliminar en vez de convivir con ella.
+**/bin/
+**/obj/
+artefactos/
+
+# No hacen falta para construir y engordan el contexto.
+.git/
+.github/
+.githooks/
+docs/
+tests/
+scripts/
+
+# Nunca, bajo ningún concepto: son secretos (ADR-0018).
+.env
+*.env
+!.env.example
+
+# Ruido del entorno de trabajo.
+.vs/
+.idea/
+*.user
+*.log
+TestResults/

@@ -45,7 +45,7 @@ El resto puede quedarse con los valores de ejemplo mientras el proveedor corresp
 docker compose up -d
 ```
 
-Comprobar que los cuatro contenedores están arriba:
+Comprobar que los cinco contenedores están arriba:
 
 ```bash
 docker compose ps
@@ -57,20 +57,39 @@ docker compose ps
 | Almacenamiento de objetos | `localhost:9000` | Adjuntos. No tiene consola web: se inspecciona con la API de S3 |
 | Correo capturado | `localhost:8026` | Ver el correo sin enviarlo a nadie |
 | Observabilidad | `localhost:18890` | Trazas, métricas y logs |
+| API | `localhost:8082` | La aplicación. `/salud/vivo` y `/salud/listo` |
 
 Los puertos están desplazados a propósito para poder tener varios entornos locales encendidos a la vez.
 
 ## 4. Arrancar la API
 
+La API es un servicio más del `docker compose` del paso anterior, así que ya está arriba. Para reconstruirla después de cambiar código:
+
 ```bash
-dotnet run --project src/UcoKudos.Api
+docker compose up -d --build api
 ```
+
+Comprobar que vive:
 
 ```bash
 curl http://localhost:8082/salud/vivo
 ```
 
-Debe responder `Healthy`.
+Debe responder `{"estado":"vivo"}`. Y que además habla con la base:
+
+```bash
+curl http://localhost:8082/salud/listo
+```
+
+Debe responder `{"estado":"listo"}`. La diferencia importa: la primera dice que el proceso arrancó, la segunda que sus dependencias responden. Un contenedor «vivo» pero no «listo» es un servicio que acepta peticiones y falla todas.
+
+### Por qué en contenedor y no con `dotnet run`
+
+En este equipo `dotnet run` **no funciona**: muere al arrancar con `An Application Control policy has blocked this file (0x800711C7)`. Smart App Control bloquea la carga de los ensamblados recién compilados, igual que con las pruebas (sección 6) y con las migraciones (sección 5).
+
+En otro equipo sin esa protección, `dotnet run` funcionaría; aun así el contenedor es la forma recomendada, porque es la misma que usa el servidor.
+
+**Un detalle que cambia al pasar de uno a otro:** dentro de la red de Docker, los servicios se llaman por su nombre. La base es `postgres`, no `localhost`, y el correo es `mailpit`. Las direcciones `localhost:5435` y compañía son para conectarse **desde Windows**, no desde dentro de un contenedor.
 
 ## 5. Base de datos
 
