@@ -22,30 +22,40 @@ namespace UcoKudos.Infrastructure.Lectura;
 public sealed class ConsultasMuroEf(UcoKudosDbContext contexto) : IConsultasMuro
 {
     public Task<Pagina<FilaMuro>> MuroAsync(Cursor? cursor, int tamano, CancellationToken ct) =>
-        EjecutarAsync(ConsultaBase(), cursor, tamano, ct);
+        EjecutarAsync(contexto.Kudos.AsNoTracking(), cursor, tamano, ct);
 
     public Task<Pagina<FilaMuro>> RecibidosAsync(Guid destinatarioId, Cursor? cursor, int tamano, CancellationToken ct) =>
-        EjecutarAsync(ConsultaBase().Where(f => f.DestinatarioId == destinatarioId), cursor, tamano, ct);
+        EjecutarAsync(
+            contexto.Kudos.AsNoTracking().Where(k => k.DestinatarioId == destinatarioId), cursor, tamano, ct);
 
     public Task<Pagina<FilaMuro>> PorCategoriaAsync(Guid categoriaId, Cursor? cursor, int tamano, CancellationToken ct) =>
-        EjecutarAsync(ConsultaBase().Where(f => f.CategoriaId == categoriaId), cursor, tamano, ct);
+        EjecutarAsync(
+            contexto.Kudos.AsNoTracking().Where(k => k.CategoriaId == categoriaId), cursor, tamano, ct);
 
     public async Task<FilaMuro?> DetalleAsync(Guid kudoId, CancellationToken ct) =>
-        await ConsultaBase().FirstOrDefaultAsync(f => f.Id == kudoId, ct);
+        await Proyectar(contexto.Kudos.AsNoTracking().Where(k => k.Id == kudoId)).FirstOrDefaultAsync(ct);
 
     /// <summary>
     /// La proyección. Las uniones al autor, al destinatario y a la categoría van aquí, en una sola
     /// consulta: es lo que evita el problema de las N+1 consultas que DRV-002 obliga a evitar.
     ///
-    /// El filtro de contenido vetado coincide con el de los índices parciales, que es lo que permite
-    /// que el motor los use.
+    /// **Recibe una consulta sobre la entidad, ya filtrada y lista para ordenar, y proyecta al
+    /// final.** El orden importa, y no es un detalle de estilo: la primera versión proyectaba
+    /// primero y ordenaba después sobre el resultado proyectado, y EF no supo traducir eso a SQL.
+    /// La consulta compilaba, pasaba las pruebas unitarias y reventaba en ejecución con un 500 en
+    /// cuanto se pedía el muro. Filtrar y ordenar sobre las columnas de la tabla, y proyectar al
+    /// final, es además lo que permite al motor usar el índice.
+    ///
+    /// El filtro de contenido vetado coincide con el de los índices parciales, que es lo que
+    /// permite que el motor los use.
     /// </summary>
-    private IQueryable<FilaMuro> ConsultaBase() =>
-        from kudo in contexto.Kudos.AsNoTracking()
+    private IQueryable<FilaMuro> Proyectar(IQueryable<Domain.Kudos.Kudo> kudos) =>
+        from kudo in kudos
         join autor in contexto.Personas.AsNoTracking() on kudo.AutorId equals autor.Id
         join destinatario in contexto.Personas.AsNoTracking() on kudo.DestinatarioId equals destinatario.Id
         join categoria in contexto.Categorias.AsNoTracking() on kudo.CategoriaId equals categoria.Id
         where !kudo.Vetado
+        orderby kudo.PublicadoEn descending, kudo.Id descending
         select new FilaMuro(
             kudo.Id,
             autor.Id,
@@ -61,25 +71,21 @@ public sealed class ConsultasMuroEf(UcoKudosDbContext contexto) : IConsultasMuro
             contexto.Adjuntos.Count(a => a.KudoId == kudo.Id && a.Confirmado && !a.Eliminado),
             kudo.PublicadoEn);
 
-    private static async Task<Pagina<FilaMuro>> EjecutarAsync(
-        IQueryable<FilaMuro> consulta, Cursor? cursor, int tamano, CancellationToken ct)
+    private async Task<Pagina<FilaMuro>> EjecutarAsync(
+        IQueryable<Domain.Kudos.Kudo> kudos, Cursor? cursor, int tamano, CancellationToken ct)
     {
         if (cursor is { } posicion)
         {
             // La condición del cursor: estrictamente anterior por instante, o del mismo instante con
             // identificador menor. Coincide con el orden, así que usa el mismo índice.
-            consulta = consulta.Where(f =>
-                f.PublicadoEn < posicion.Instante
-                || (f.PublicadoEn == posicion.Instante && f.Id.CompareTo(posicion.Id) < 0));
+            kudos = kudos.Where(k =>
+                k.PublicadoEn < posicion.Instante
+                || (k.PublicadoEn == posicion.Instante && k.Id.CompareTo(posicion.Id) < 0));
         }
 
         // Se pide uno más de los que se devuelven: así se sabe si hay página siguiente sin contar el
         // total, que sería recorrer toda la tabla.
-        var filas = await consulta
-            .OrderByDescending(f => f.PublicadoEn)
-            .ThenByDescending(f => f.Id)
-            .Take(tamano + 1)
-            .ToListAsync(ct);
+        var filas = await Proyectar(kudos).Take(tamano + 1).ToListAsync(ct);
 
         var hayMas = filas.Count > tamano;
         var elementos = hayMas ? filas.Take(tamano).ToList() : filas;

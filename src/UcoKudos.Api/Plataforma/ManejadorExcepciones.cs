@@ -20,7 +20,9 @@ namespace UcoKudos.Api.Plataforma;
 /// reporte un error con un identificador y se encuentre la traza exacta (QA-OBS-01), y lo que hace
 /// innecesario devolver una traza de pila, que es lo que no se debe filtrar nunca.
 /// </summary>
-public sealed class ManejadorExcepciones(IProblemDetailsService problemas) : IExceptionHandler
+public sealed class ManejadorExcepciones(
+    IProblemDetailsService problemas,
+    ILogger<ManejadorExcepciones> registro) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext contexto, Exception excepcion, CancellationToken ct)
@@ -29,6 +31,38 @@ public sealed class ManejadorExcepciones(IProblemDetailsService problemas) : IEx
         ArgumentNullException.ThrowIfNull(excepcion);
 
         var (estado, titulo, detalle) = Traducir(excepcion);
+        var traza = Activity.Current?.Id ?? contexto.TraceIdentifier;
+
+        // **Un error inesperado se registra entero, con su traza de pila.** Esto faltaba, y era un
+        // agujero serio: la respuesta prometía que con el identificador de traza se podía
+        // diagnosticar el problema, pero no se escribía nada en ninguna parte con ese
+        // identificador. Un 500 no dejaba rastro, así que la única forma de saber qué había pasado
+        // era reproducirlo adivinando. Se descubrió al llamar al muro desde el cliente.
+        //
+        // No filtrar detalles al cliente y no dejar rastro en el servidor son cosas distintas, y
+        // confundirlas cuesta horas. Lo que no sale por la respuesta tiene que estar en el
+        // registro, unido a ella por el mismo identificador (QA-OBS-01).
+        if (estado == StatusCodes.Status500InternalServerError)
+        {
+            registro.LogError(
+                excepcion,
+                "Error no controlado en {Metodo} {Ruta}. Traza {Traza}.",
+                contexto.Request.Method,
+                contexto.Request.Path.Value,
+                traza);
+        }
+        else
+        {
+            // Los errores de negocio son parte del funcionamiento normal, no incidencias: se
+            // registran en un nivel que no despierta a nadie, pero se registran.
+            registro.LogInformation(
+                "Error de negocio {Estado} en {Metodo} {Ruta}: {Mensaje}. Traza {Traza}.",
+                estado,
+                contexto.Request.Method,
+                contexto.Request.Path.Value,
+                excepcion.Message,
+                traza);
+        }
 
         contexto.Response.StatusCode = estado;
 
@@ -45,7 +79,7 @@ public sealed class ManejadorExcepciones(IProblemDetailsService problemas) : IEx
                 {
                     // El identificador de traza, que es lo que une esta respuesta con los logs, las
                     // trazas y los eventos de auditoría de la misma petición.
-                    ["traceId"] = Activity.Current?.Id ?? contexto.TraceIdentifier
+                    ["traceId"] = traza
                 }
             }
         });
