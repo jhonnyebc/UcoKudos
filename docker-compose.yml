@@ -116,8 +116,14 @@ services:
 
       # En local el correo va al contenedor de captura, que no pide usuario ni cifrado.
       UcoKudos__Correo__Proveedor: ${SMTP_PROVEEDOR:-Smtp}
-      UcoKudos__Correo__Host: ${SMTP_HOST:-mailpit}
-      UcoKudos__Correo__Puerto: ${SMTP_PUERTO:-1025}
+      # El servidor de correo es `mailpit` y NO lo que diga SMTP_HOST, que vale `localhost` para
+      # conectarse desde Windows. Dentro de este contenedor, «localhost» es la propia API.
+      #
+      # Costó encontrarlo porque no falla de forma visible: el Kudo se publica, el evento se
+      # procesa y el correo simplemente no aparece en ninguna parte. El mismo error estaba evitado
+      # en el almacenamiento de objetos y se me escapó aquí.
+      UcoKudos__Correo__Host: mailpit
+      UcoKudos__Correo__Puerto: 1025
       UcoKudos__Correo__Remitente: ${SMTP_REMITENTE:-no-responder@ucokudos.local}
       UcoKudos__Correo__Usuario: ${SMTP_USUARIO:-}
       UcoKudos__Correo__Password: ${SMTP_PASSWORD:-}
