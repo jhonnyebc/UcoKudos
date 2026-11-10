@@ -7,6 +7,9 @@ on:
     branches: [develop, main]
   push:
     branches: [develop, main]
+  # Para poder relanzarlo a mano sin inventar un commit vacio, por ejemplo despues de anadir un
+  # secreto que un job necesita.
+  workflow_dispatch:
 
 permissions:
   contents: read
