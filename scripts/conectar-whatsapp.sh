@@ -34,13 +34,37 @@ if [ -z "${TOKEN:-}" ]; then
   exit 1
 fi
 
-# Se usa # como separador del sed porque un token puede contener / y | pero nunca #.
-sed -i "s#^WHATSAPP_ACCESS_TOKEN=.*#WHATSAPP_ACCESS_TOKEN=$TOKEN#" .env
-sed -i "s#^WHATSAPP_PROVEEDOR=.*#WHATSAPP_PROVEEDOR=MetaCloud#" .env
-sed -i "s#^WHATSAPP_PHONE_NUMBER_ID=.*#WHATSAPP_PHONE_NUMBER_ID=$PHONE_NUMBER_ID#" .env
+# **Se comprueba que la clave existe ANTES de reemplazarla, y se verifica después.**
+#
+# `sed -i "s#^CLAVE=.*#...#"` sobre un archivo que no tiene esa línea no falla: no encuentra
+# nada, no cambia nada y termina con código 0. El guion seguiría, reiniciaría la API, vería
+# /salud/listo en verde y diría LISTO, con la configuración intacta y WhatsApp en simulado.
+# Sería el enésimo fallo que se reporta como éxito. Por eso se asigna y se vuelve a leer.
+asignar() {
+  clave="$1"
+  valor="$2"
+
+  if ! grep -q "^$clave=" .env; then
+    echo "El .env del servidor no tiene la clave $clave. No se toca nada." >&2
+    exit 1
+  fi
+
+  # Se usa # como separador porque un token puede contener / y | pero nunca #.
+  sed -i "s#^$clave=.*#$clave=$valor#" .env
+
+  leido=$(sed -n "s/^$clave=//p" .env)
+  if [ "$leido" != "$valor" ]; then
+    echo "La clave $clave no quedó con el valor esperado. Se detiene." >&2
+    exit 1
+  fi
+}
+
+asignar WHATSAPP_ACCESS_TOKEN "$TOKEN"
+asignar WHATSAPP_PROVEEDOR MetaCloud
+asignar WHATSAPP_PHONE_NUMBER_ID "$PHONE_NUMBER_ID"
 
 # Se informa de la longitud, no del valor: basta para saber que llegó entero y no revela nada.
-echo "Token guardado: ${#TOKEN} caracteres."
+echo "Token guardado y verificado: ${#TOKEN} caracteres."
 echo "Proveedor: MetaCloud. Número: $PHONE_NUMBER_ID."
 
 echo "==> Reiniciando la API para que lea la configuración nueva"
