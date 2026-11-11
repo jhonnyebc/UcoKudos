@@ -2,10 +2,11 @@
 # Despliega UCO Kudos en el servidor (ADR-0016). Se ejecuta EN la máquina, desde la carpeta del
 # repositorio.
 #
-#   ./scripts/desplegar.sh 0.1.0-a1b2c3d
+#   ./scripts/desplegar.sh 0.1.0-a1b2c3d 0.1.0-d4e5f6a
 #
-# El argumento es la etiqueta de la imagen que el pipeline construyó y escaneó. No se reconstruye
-# nada aquí: se despliega exactamente lo que pasó las puertas de calidad (ADR-0017).
+# Los argumentos son las etiquetas que el pipeline construyó y escaneó: primero la de la API y
+# después la del cliente. No se reconstruye nada aquí: se despliega exactamente lo que pasó las
+# puertas de calidad (ADR-0017).
 #
 # **El orden importa y es el del ADR:** primero se traen las imágenes, después se aplican las
 # migraciones, y solo entonces la versión nueva empieza a recibir tráfico. Al revés, la aplicación
@@ -13,11 +14,15 @@
 # peticiones reales.
 set -eu
 
-VERSION="${1:-}"
+# Son DOS etiquetas, una por imagen, porque la API y el cliente viven en repositorios separados
+# (RT-02) y cada uno avanza a su ritmo. La primera versión de este guion asumía una sola etiqueta
+# para los dos, y eso solo habría funcionado por casualidad.
+VERSION_API="${1:-}"
+VERSION_WEB="${2:-}"
 
-if [ -z "$VERSION" ]; then
-  echo "Falta la versión. Uso: ./scripts/desplegar.sh <etiqueta>" >&2
-  echo "Las etiquetas publicadas están en el registro del repositorio." >&2
+if [ -z "$VERSION_API" ] || [ -z "$VERSION_WEB" ]; then
+  echo "Faltan versiones. Uso: ./scripts/desplegar.sh <etiqueta-api> <etiqueta-web>" >&2
+  echo "Las etiquetas publicadas están en el registro de cada repositorio." >&2
   exit 1
 fi
 
@@ -28,12 +33,12 @@ fi
 
 COMPOSE="docker compose -f docker-compose.yml -f docker-compose.produccion.yml"
 
-echo "==> Desplegando $VERSION"
+echo "==> Desplegando api=$VERSION_API web=$VERSION_WEB"
 
 # Las versiones se fijan aquí y se guardan en .env, de modo que el archivo refleja siempre lo que
 # está corriendo. Si alguien entra mañana a la máquina, puede saberlo sin preguntar.
 grep -v '^VERSION_API=\|^VERSION_WEB=' .env > .env.nuevo
-printf 'VERSION_API=%s\nVERSION_WEB=%s\n' "$VERSION" "$VERSION" >> .env.nuevo
+printf 'VERSION_API=%s\nVERSION_WEB=%s\n' "$VERSION_API" "$VERSION_WEB" >> .env.nuevo
 mv .env.nuevo .env
 
 echo "==> Trayendo las imágenes"
@@ -68,5 +73,5 @@ until curl -fsS http://localhost/salud/listo > /dev/null 2>&1; do
   sleep 2
 done
 
-echo "==> Desplegado $VERSION y respondiendo."
+echo "==> Desplegado y respondiendo. api=$VERSION_API web=$VERSION_WEB"
 $COMPOSE ps

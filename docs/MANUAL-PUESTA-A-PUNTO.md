@@ -276,7 +276,7 @@ echo <token-de-github> | docker login ghcr.io -u jhonnyebc --password-stdin
 ### 8.4 Desplegar
 
 ```bash
-./scripts/desplegar.sh 0.1.0-a1b2c3d
+./scripts/desplegar.sh 0.1.0-a1b2c3d 0.1.0-d4e5f6a
 ```
 
 El argumento es la etiqueta que publicó el pipeline. **No se reconstruye nada en el servidor**: se despliega exactamente la imagen que pasó las puertas de calidad (ADR-0017).
@@ -297,7 +297,7 @@ docker build -t ghcr.io/jhonnyebc/ucokudos-api:0.1.0-manual .
 docker push ghcr.io/jhonnyebc/ucokudos-api:0.1.0-manual
 ```
 
-Y en el servidor, `./scripts/desplegar.sh 0.1.0-manual`. Lo mismo con el cliente desde su repositorio, con la imagen `ucokudos-web`.
+Y en el servidor, `./scripts/desplegar.sh 0.1.0-manual <etiqueta-del-cliente>`. Lo mismo con el cliente desde su repositorio, con la imagen `ucokudos-web`.
 
 **Esto conviene probarlo antes y no el mismo día.** Un procedimiento de emergencia que nadie ha ejecutado nunca no es un procedimiento, es una intención.
 
