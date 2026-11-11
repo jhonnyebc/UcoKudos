@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using UcoKudos.Api.Endpoints;
 using UcoKudos.Api.Plataforma;
 using UcoKudos.Infrastructure;
+using UcoKudos.Infrastructure.Persistencia;
 
 var constructor = WebApplication.CreateBuilder(args);
 
@@ -61,6 +62,25 @@ constructor.Services.AddOpenApi();
 constructor.Services.AddHealthChecks();
 
 var aplicacion = constructor.Build();
+
+// ---------------------------------------------------------------------------------------------
+// Modo migración: aplica el esquema y termina, sin atender tráfico (ADR-0003, ADR-0016).
+//
+// Existe para que el despliegue pueda migrar **con la misma imagen que va a desplegar**, de modo
+// que el esquema lo aplica exactamente el código que después lo va a usar. La alternativa
+// habitual —migrar al arrancar la aplicación— tiene dos problemas: con más de una instancia
+// varias intentarían migrar a la vez, y en una migración lenta el servicio queda sin responder
+// mientras tanto.
+//
+// Si falla, termina con código distinto de cero, que es lo que permite al guion de despliegue
+// pararse antes de dirigir tráfico a una versión cuyo esquema no se aplicó.
+// ---------------------------------------------------------------------------------------------
+if (args.Contains("--migrar", StringComparer.Ordinal))
+{
+    await using var alcanceMigracion = aplicacion.Services.CreateAsyncScope();
+    await alcanceMigracion.ServiceProvider.MigrarBaseDeDatosAsync(CancellationToken.None);
+    return;
+}
 
 aplicacion.UseExceptionHandler();
 aplicacion.UseAuthentication();

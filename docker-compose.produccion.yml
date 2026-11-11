@@ -1,0 +1,77 @@
+# Despliegue de UCO Kudos en la máquina del servidor (ADR-0016).
+#
+# Se usa JUNTO al docker-compose.yml, no en su lugar:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.produccion.yml up -d
+#
+# Así la topología es la misma en los dos entornos y lo único que cambia es la configuración, que
+# es el principio de paridad del que habla ADR-0018. Este archivo solo añade el proxy y ajusta lo
+# que de verdad difiere.
+#
+# **Lo que cambia respecto al entorno local, y por qué:**
+#
+#  - Solo el proxy publica puertos a internet. La base, el almacenamiento y la observabilidad
+#    dejan de publicar: se llega a ellos por un túnel cuando hace falta (ADR-0016, punto 7).
+#  - La API y el cliente se despliegan desde las imágenes que el pipeline construyó y escaneó, no
+#    reconstruidas aquí (punto 6). Por eso llevan etiqueta explícita y no `build`.
+#  - El proxy pide y renueva el certificado solo. HTTPS no es opcional: sin origen seguro no hay
+#    service worker ni notificaciones (punto 5).
+services:
+  proxy:
+    image: caddy:2.10-alpine
+    container_name: ucokudos-proxy
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMINIO: ${DOMINIO:?Define DOMINIO en .env}
+      CORREO_TLS: ${CORREO_TLS:?Define CORREO_TLS en .env}
+    volumes:
+      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ucokudos-web:/srv/web:ro
+      - ucokudos-caddy-datos:/data
+      - ucokudos-caddy-config:/config
+
+  # El cliente web no es un servidor: es un montón de archivos. Este contenedor los deja en un
+  # volumen y termina. El proxy los sirve desde ahí, así que no hay un segundo servidor web que
+  # mantener ni problema de origen cruzado entre el cliente y la API (ADR-0016, punto 8).
+  web:
+    image: ghcr.io/jhonnyebc/ucokudos-web:${VERSION_WEB:?Define VERSION_WEB en .env}
+    container_name: ucokudos-web
+    restart: "no"
+    command: ["sh", "-c", "rm -rf /salida/* && cp -a /dist/. /salida/"]
+    volumes:
+      - ucokudos-web:/salida
+
+  api:
+    # Se despliega la imagen que el pipeline construyó y escaneó, con su etiqueta de versión y
+    # commit. Nunca una etiqueta móvil: con `latest` no se sabe qué está corriendo.
+    image: ghcr.io/jhonnyebc/ucokudos-api:${VERSION_API:?Define VERSION_API en .env}
+    build: !reset null
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+    ports: !reset []
+
+  postgres:
+    ports: !reset []
+
+  objetos:
+    ports: !reset []
+
+  mailpit:
+    # El correo de verdad sale por el proveedor configurado en .env. Mailpit es para el entorno
+    # local y aquí no pinta nada: dejarlo sería arriesgarse a que el correo de producción acabe
+    # atrapado en un contenedor en vez de llegar a la gente.
+    profiles: ["solo-local"]
+
+  observabilidad:
+    ports: !reset []
+
+volumes:
+  ucokudos-web:
+  ucokudos-caddy-datos:
+  ucokudos-caddy-config:

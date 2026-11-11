@@ -206,11 +206,124 @@ Después hay que **desplegarla y arrastrarla al flujo de Login**, en Actions →
 El nombre del claim tiene que coincidir con el que lee `ContextoUsuario`. Si se cambia aquí, hay que cambiarlo allí.
 
 **Una advertencia que ahorra tiempo:** el correo del proveedor tiene que corresponder a una persona registrada en la plataforma. Si no, la API responde que no existe una cuenta para esa dirección, y es el comportamiento correcto: autenticarse no es lo mismo que tener cuenta.
-## 8. Despliegue en el servidor (pendiente)
+## 8. Despliegue en el servidor
 
-El pipeline de despliegue publica la imagen y la reemplaza en el servidor (ADR-0016). Queda por documentar: creación de la máquina, instalación de Docker, proxy inverso con HTTPS, archivo de entorno con permisos restringidos y procedimiento de respaldo.
+Todo lo de esta sección se hace **una vez**. Después, desplegar una versión nueva es un comando.
 
-Conviene dejar escrito también el **procedimiento manual** de despliegue: si el pipeline falla la mañana de la entrega, hay que poder desplegar a mano.
+### 8.1 La máquina
+
+Una máquina virtual de capa gratuita permanente (ADR-0016). Con 1 GB de memoria va justo: conviene 2 GB o más, porque corren cinco contenedores y PostgreSQL no comparte de buena gana.
+
+Al crearla hay que **guardar la clave privada SSH**: sin ella no se entra, y no se puede volver a descargar.
+
+Después, **abrir los puertos 80 y 443**, y esto tiene dos partes que se olvidan a menudo:
+
+1. En la consola del proveedor, en las reglas de red de la subred.
+2. **Dentro de la máquina**, en su cortafuegos. Muchas imágenes traen reglas propias que bloquean todo aunque el proveedor lo permita, y el síntoma es desesperante: la máquina responde al ping y la web no carga.
+
+```bash
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+```
+
+```bash
+sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+```
+
+```bash
+sudo netfilter-persistent save
+```
+
+### 8.2 El nombre de dominio
+
+HTTPS necesita un nombre, no una IP: una autoridad certificadora no emite certificados para direcciones. Si no hay dominio propio, sirve un servicio de DNS comodín:
+
+```text
+kudos.<IP-de-la-maquina>.sslip.io
+```
+
+Ese nombre resuelve solo a esa IP y vale para un certificado de verdad. **Hay que comprobar que resuelve antes de levantar nada**, o el proxy pedirá el certificado, fallará y habrá que esperar antes de reintentar.
+
+```bash
+ping -c1 kudos.<IP>.sslip.io
+```
+
+### 8.3 Preparar la máquina
+
+```bash
+sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin git
+```
+
+```bash
+sudo usermod -aG docker $USER && newgrp docker
+```
+
+```bash
+git clone https://github.com/jhonnyebc/UcoKudos.git && cd UcoKudos
+```
+
+```bash
+cp .env.produccion.example .env && chmod 600 .env
+```
+
+Rellenar el `.env` con los valores reales. Los permisos restringidos no son adorno: ese archivo tiene todos los secretos de la plataforma.
+
+Y entrar al registro de imágenes, que es privado por omisión:
+
+```bash
+echo <token-de-github> | docker login ghcr.io -u jhonnyebc --password-stdin
+```
+
+### 8.4 Desplegar
+
+```bash
+./scripts/desplegar.sh 0.1.0-a1b2c3d
+```
+
+El argumento es la etiqueta que publicó el pipeline. **No se reconstruye nada en el servidor**: se despliega exactamente la imagen que pasó las puertas de calidad (ADR-0017).
+
+El guion hace las cosas en este orden, y el orden importa: trae las imágenes, levanta la base, **aplica las migraciones**, publica los archivos del cliente, arranca la versión nueva y **comprueba que responde** antes de darse por bueno. Si la aplicación no contesta, termina con error en lugar de dejar un despliegue roto que parece correcto.
+
+Las migraciones se aplican con la **misma imagen** que se va a desplegar, así que el esquema lo aplica exactamente el código que después lo va a usar.
+
+### 8.5 Si el pipeline falla la mañana de la entrega
+
+Hay que poder desplegar sin él. Construir y publicar la imagen a mano, desde el equipo:
+
+```bash
+docker build -t ghcr.io/jhonnyebc/ucokudos-api:0.1.0-manual .
+```
+
+```bash
+docker push ghcr.io/jhonnyebc/ucokudos-api:0.1.0-manual
+```
+
+Y en el servidor, `./scripts/desplegar.sh 0.1.0-manual`. Lo mismo con el cliente desde su repositorio, con la imagen `ucokudos-web`.
+
+**Esto conviene probarlo antes y no el mismo día.** Un procedimiento de emergencia que nadie ha ejecutado nunca no es un procedimiento, es una intención.
+
+### 8.6 Ver lo que no está expuesto
+
+Solo el proxy publica puertos. Para mirar la base o el panel de observabilidad se abre un túnel desde el equipo:
+
+```bash
+ssh -L 5435:localhost:5435 -L 18890:localhost:18888 usuario@<IP>
+```
+
+Eso es deliberado: una base de datos accesible desde internet es la forma más rápida de perder los datos de todos.
+
+### 8.7 Respaldo
+
+La base y el almacenamiento se respaldan **juntos** (ADR-0012): un respaldo de la base sin los archivos deja Kudos que apuntan a adjuntos que ya no existen.
+
+```bash
+docker compose exec -T postgres pg_dump -U ucokudos ucokudos | gzip > respaldo-$(date +%F).sql.gz
+```
+
+```bash
+docker run --rm -v ucokudos_ucokudos-objetos:/datos -v "$PWD":/salida alpine tar czf /salida/adjuntos-$(date +%F).tar.gz -C /datos .
+```
+
+**Y hay que probar la restauración al menos una vez.** Un respaldo que nunca se ha restaurado es un archivo del que no se sabe nada.
 
 ## 9. Problemas conocidos
 

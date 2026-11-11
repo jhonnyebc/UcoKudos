@@ -1,0 +1,57 @@
+# Proxy inverso de UCO Kudos (ADR-0016).
+#
+# Hace tres cosas: termina HTTPS con un certificado que pide y renueva solo, sirve el cliente web
+# como archivos estáticos, y pasa a la API todo lo que empiece por /api.
+#
+# **El cliente y la API comparten origen a propósito.** Así no hay CORS que configurar, y tampoco
+# la tentación de abrirlo «mientras tanto», que es como acaban abiertos para siempre.
+
+{$DOMINIO} {
+	# El certificado lo gestiona el proxy. El correo es el que recibe los avisos de caducidad.
+	tls {$CORREO_TLS}
+
+	encode zstd gzip
+
+	# La API va primero: una ruta de la aplicación nunca empieza por /api, así que no hay ambigüedad.
+	handle /api/* {
+		reverse_proxy api:8080 {
+			# Los avisos en vivo son un flujo que no termina. Sin esto, el proxy esperaría a tener
+			# la respuesta completa antes de mandar nada, y el tiempo real dejaría de serlo.
+			flush_interval -1
+		}
+	}
+
+	handle /salud/* {
+		reverse_proxy api:8080
+	}
+
+	handle {
+		root * /srv/web
+
+		# El service worker **no se cachea**: es el archivo que le dice al navegador que hay una
+		# versión nueva. Si se cacheara, un usuario podría quedarse con la aplicación vieja para
+		# siempre sin que nada pareciera fallar, que es justo lo que ADR-0015 avisa.
+		@service_worker path /sw.js /registerSW.js
+		header @service_worker Cache-Control "no-cache, no-store, must-revalidate"
+
+		# Los demás archivos llevan el contenido en el nombre, así que se pueden cachear sin miedo.
+		@con_huella path /assets/*
+		header @con_huella Cache-Control "public, max-age=31536000, immutable"
+
+		# Es una aplicación de una sola página: cualquier ruta desconocida la resuelve el cliente.
+		try_files {path} /index.html
+		file_server
+	}
+
+	# Cabeceras de seguridad. No sustituyen a nada del servidor, pero quitan clases enteras de
+	# ataque por unos pocos bytes.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+
+		# Quita la cabecera que anuncia qué servidor es: no esconde nada a quien busque de verdad,
+		# pero no hace falta regalarlo.
+		-Server
+	}
+}
