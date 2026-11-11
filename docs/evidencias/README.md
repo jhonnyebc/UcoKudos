@@ -17,7 +17,7 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 | 5 | Publicación | **Lista para capturar** | `05-publicacion.png` |
 | 6 | Despliegue | **Lista para capturar** | `06-despliegue.png` |
 | 7 | Correo | Falta proveedor real | `07-correo.png` |
-| 8 | WhatsApp | Falta conectar en el servidor | `08-whatsapp.jpg` |
+| 8 | WhatsApp | **Verificado en producción** el 2026-11-11 | `08-whatsapp.jpg` |
 | 9 | Notificaciones push | **Lista para capturar** | `09-push.png` |
 | 10 | Auditoría | Falta ejecutarla en vivo | `10-auditoria.png` |
 | 11 | Observabilidad | Falta la traza completa | `11-observabilidad.png` |
