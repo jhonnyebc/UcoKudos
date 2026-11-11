@@ -42,6 +42,19 @@ if command -v gitleaks >/dev/null 2>&1; then
     set -e
     interpretar "$codigo"
 elif command -v docker >/dev/null 2>&1; then
+    # **Se comprueba que el demonio responde ANTES de escanear, y no es una precaución de más.**
+    #
+    # Con Docker cerrado, `docker run` termina con código 1, que es exactamente el mismo que usa
+    # gitleaks para «encontré un secreto». La función de abajo los confundía, y el gancho decía
+    # «BLOQUEADO, se encontró un posible secreto» cuando lo único que pasaba era que Docker estaba
+    # apagado. Mandar a alguien a buscar un secreto que no existe cuesta más que el fallo real.
+    if ! docker info >/dev/null 2>&1; then
+        echo "pre-push: Docker no responde, así que NO se pudo escanear. Esto NO es un secreto encontrado."
+        echo "pre-push: abrir Docker Desktop, esperar a que 'docker info' conteste y volver a enviar."
+        echo "pre-push: se bloquea igual, porque enviar sin escanear deja el repositorio sin esa verificación."
+        exit 1
+    fi
+
     echo "pre-push: buscando secretos con gitleaks en Docker..."
     # MSYS_NO_PATHCONV=1 es imprescindible en Git Bash sobre Windows: sin él, la shell convierte
     # las rutas del contenedor (/repo) en rutas de Windows y gitleaks no encuentra nada que escanear.
