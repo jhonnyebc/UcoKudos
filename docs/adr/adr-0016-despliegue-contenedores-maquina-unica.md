@@ -6,7 +6,7 @@
 |---|---|
 | ID | ADR-0016 |
 | Fecha | 2026-11-08 |
-| Estado | **Accepted** |
+| Estado | **Accepted** (rev. 2026-11-11) |
 | Participantes | Jhonny Estiven Benítez Caro |
 | Curso | Ingeniería del Software II — UCO, semestre 2-2026 |
 | Profesor evaluador | Wider Farid Sánchez Garzón |
@@ -99,6 +99,24 @@ Desplegar sobre **una máquina virtual de una capa gratuita permanente**, con to
 - Los puertos de la plataforma se eligen distintos de los que usan los otros proyectos del autor en su equipo, para poder tener varios entornos locales encendidos a la vez.
 - El despliegue se prueba completo al menos un día antes de la entrega, incluida la ejecución del flujo de publicación de un Kudo desde un celular con datos móviles, fuera de la red de casa. Una demostración que solo funciona en la red local no cumple RT-05.
 - Se deja anotado el procedimiento manual de despliegue además del automatizado: si el pipeline falla la mañana de la entrega, hay que poder desplegar a mano.
+
+## Revisión del 2026-11-11: el punto 2 no se pudo cumplir
+
+El punto 2 de esta decisión dice **«capa gratuita permanente, no crédito inicial»**, y argumenta que un crédito se agota y se agota sin avisar. El despliegue real **no cumple ese punto**: corre sobre una máquina pagada con el crédito de Azure for Students, que son 100 dólares a doce meses.
+
+**Qué se intentó antes, y por qué no salió.** El proveedor elegido ofrecía capa gratuita permanente, que era exactamente lo que el punto 2 pedía. Su registro falló: tras verificar la tarjeta, la creación de la cuenta se rechazó con un error genérico que atribuye el problema a un registro previo incompleto, y resolverlo pasa por su soporte. A dos días de la entrega, esperar una respuesta de soporte no era una opción. Se descartó también por capacidad y cupos un segundo intento en otras regiones del mismo proveedor y en formas distintas.
+
+**Qué se eligió.** Una máquina de 2 núcleos y 8 GB en Azure, pagada con el crédito de estudiante asociado al correo institucional. El coste real hasta la sustentación es de unos 9 dólares de los 100.
+
+**Qué riesgo queda vivo, dicho sin adornos.** El que este ADR quería evitar: el crédito se acaba. Mitigaciones aplicadas:
+
+- La máquina se **apaga cuando no se usa**. Detenida y desasignada no consume crédito de cómputo, solo el disco, que son céntimos al mes. Así el crédito alcanza de sobra los doce meses de la oferta.
+- Hay **apagado automático** programado, para que un olvido no consuma el crédito de madrugada.
+- El procedimiento de despliegue **no depende del proveedor**: es una máquina con Docker, un archivo de composición y un nombre de dominio. Mudarse a otro sitio es crear una máquina, instalar Docker y ejecutar el mismo guion.
+
+**Lo que no cambió, que es casi todo.** Los diez puntos de la decisión siguen en pie: una máquina, contenedores con un único archivo de composición, HTTPS automático, imágenes etiquetadas con versión y commit, superficie expuesta mínima, migraciones durante el despliegue y respaldo conjunto de base y adjuntos. **Ni el compose, ni el proxy, ni el guion necesitaron una sola línea distinta por el cambio de proveedor**, y eso no es suerte: esta decisión nunca nombró un proveedor, decidió una forma de desplegar.
+
+**Sobre el nombre de dominio.** No se compró uno: se usa un servicio de DNS comodín que resuelve `kudos.<IP>.sslip.io` a la máquina, suficiente para un certificado emitido por una autoridad real. Si el proyecto siguiera, un dominio propio es un cambio de una línea en la configuración.
 
 ## Referencias
 

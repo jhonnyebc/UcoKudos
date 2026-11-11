@@ -11,7 +11,7 @@ Fecha: 2026-11-08 · Entrega y sustentación: **vie 2026-11-13, 12:00** (quedan 
 | 001 Backend | **.NET 10 + C#**, reutilizando el núcleo de FlowRide: Outbox, gateway de notificaciones, adaptador de Meta Cloud API, auditoría con cadena SHA-256, CI con Sonar y Trivy, Dockerfile *chiseled* y reglas de arquitectura con ArchUnitNET | Spring Boot (habría que escribir todo eso desde cero en 5 días), NestJS | Que la reutilización arrastre conceptos multi-tenant que Kudos no necesita: hay que podarlos, no copiarlos |
 | 001b Front-end | **React + Vite como PWA, mobile first**, con el tooling de FlowRide: tipos generados desde OpenAPI, Vitest con axe y la regla de lint contra secretos en `VITE_*` | Angular, reutilizar el panel de escritorio de FlowRide | El diseño es nuevo: el panel de FlowRide es de escritorio y Kudos es 90 % móvil |
 | 001c Tiempo real | **SSE + Web Push (VAPID)**: SSE si el destinatario está conectado (reutiliza lo de FlowRide), Web Push si no | Solo SSE, solo Web Push | El permiso de notificaciones del navegador: hay que pedirlo en el momento adecuado |
-| 002 Hosting | Oracle Cloud Always Free, una VM con Docker Compose y Caddy (HTTPS) | Render free (cold starts de 30-60 s), Railway/Fly (ya no son gratis) | Aprobación de cuenta: **crearla hoy** |
+| 002 Hosting | Una VM con Docker Compose y Caddy (HTTPS). Se intentó Oracle Cloud Always Free; su registro falló y se desplegó en Azure con crédito de estudiante (ver la revisión del 2026-11-11 en ADR-0016) | Render free (cold starts de 30-60 s), Railway/Fly (ya no son gratis) | Aprobación de cuenta: **crearla hoy** |
 | 003 WhatsApp | Meta Cloud API tras un puerto `WhatsAppSender` | Twilio Sandbox (código de unión, expira a 3 días) | Token de prueba de 24 h: usar System User token. Hasta 5 destinatarios de prueba registrados |
 
 ## 2. Decisiones propuestas (por confirmar)
@@ -34,16 +34,16 @@ Fecha: 2026-11-08 · Entrega y sustentación: **vie 2026-11-13, 12:00** (quedan 
 
 | Día | Foco | Salida verificable |
 |---|---|---|
-| Dom 8 | Cuenta Oracle, **plantilla de WhatsApp enviada a aprobación**, números de prueba registrados, Brevo y SonarCloud; repos `kudos-api` y `kudos-web`; ADRs y drivers | Cuentas listas, esqueleto de repos |
+| Dom 8 | Cuenta del proveedor de nube, **plantilla de WhatsApp enviada a aprobación**, números de prueba registrados, Brevo y SonarCloud; repos `kudos-api` y `kudos-web`; ADRs y drivers | Cuentas listas, esqueleto de repos |
 | Lun 9 | Dominio + caso de uso Publicar Kudo + persistencia + Outbox + auditoría (adaptando FlowRide) | Pruebas unitarias en verde |
 | Mar 10 | Correo, WhatsApp, SSE y Web Push; PWA React mobile first | Flujo completo en local |
-| Mié 11 | CI/CD, Sonar, Trivy, despliegue en Oracle, observabilidad | URL pública funcionando |
+| Mié 11 | CI/CD, Sonar, Trivy, despliegue en la nube, observabilidad | URL pública funcionando |
 | Jue 12 | Pruebas de integración y E2E, evidencias, diagramas, matriz 12-Factor, manual | Documentación completa |
 | Vie 13 | Revisión final y sustentación antes de las 12:00 | Entregado |
 
 ## 4. Qué haces tú hoy (yo no puedo hacerlo)
 
-1. Crear la cuenta de **Oracle Cloud** (es la de mayor riesgo de demora).
+1. Crear la cuenta del proveedor de nube (es la de mayor riesgo de demora). Se intentó Oracle Cloud y acabó siendo Azure for Students: ver la revisión del 2026-11-11 en ADR-0016.
 2. En **Meta for Developers** (ya tienes cuenta): **enviar a aprobación la plantilla de WhatsApp** del aviso de Kudo y registrar como destinatarios los números de la demostración. La plantilla es lo más urgente: el destinatario de un Kudo nunca te escribió, así que siempre estás fuera de la ventana de 24 h y sin plantilla aprobada no sale ningún mensaje.
 3. Crear cuenta en **Brevo** y confirmar si **SonarCloud** ya tiene la organización `jhonnyebc` y el secreto `SONAR_TOKEN` (en la memoria de FlowRide quedó como pendiente opcional).
 4. Crear los repositorios en GitHub.

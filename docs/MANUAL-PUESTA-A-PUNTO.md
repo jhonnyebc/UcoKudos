@@ -219,7 +219,7 @@ Al crearla hay que **guardar la clave privada SSH**: sin ella no se entra, y no 
 Después, **abrir los puertos 80 y 443**, y esto tiene dos partes que se olvidan a menudo:
 
 1. En la consola del proveedor, en las reglas de red de la subred.
-2. **Dentro de la máquina**, en su cortafuegos. Muchas imágenes traen reglas propias que bloquean todo aunque el proveedor lo permita, y el síntoma es desesperante: la máquina responde al ping y la web no carga.
+2. **Dentro de la máquina**, en su cortafuegos, **solo en algunos proveedores**. Hay imágenes que traen reglas propias que bloquean todo aunque el proveedor lo permita, y el síntoma es desesperante: la máquina responde al ping y la web no carga. En el despliegue actual, sobre Azure, **no hizo falta**: basta con las reglas del grupo de seguridad. Los comandos de abajo son para el caso en que sí haga falta.
 
 ```bash
 sudo iptables -I INPUT 6 -m state --state NEW -p tcp --dport 80 -j ACCEPT
