@@ -532,7 +532,6 @@ namespace UcoKudos.Infrastructure.Persistencia.Migraciones
             modelBuilder.Entity("UcoKudos.Domain.Kudos.Adjunto", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 

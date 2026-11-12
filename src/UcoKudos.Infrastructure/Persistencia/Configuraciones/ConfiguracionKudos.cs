@@ -102,7 +102,18 @@ internal sealed class ConfiguracionAdjunto : IEntityTypeConfiguration<Adjunto>
         entidad.ToTable("adjunto", UcoKudosDbContext.EsquemaNucleo);
         entidad.HasKey(a => a.Id);
 
-        entidad.Property(a => a.Id).HasColumnName("id");
+        // **La clave la asigna el dominio, y hay que decírselo a EF.** Para una clave Guid, EF asume
+        // por omisión que la genera él al insertar. Con esa suposición, cuando una entidad nueva
+        // aparece dentro de la colección de un agregado ya cargado y **su clave ya viene rellena**
+        // —que es lo que hace `Kudo.AgregarAdjunto`—, EF concluye que la fila ya existe y emite un
+        // UPDATE en lugar de un INSERT. Cero filas afectadas, y lo traduce como un conflicto de
+        // concurrencia: el usuario veía «otra operación modificó este contenido» sin que nadie
+        // estuviera tocando nada.
+        //
+        // Se descubrió con el primer uso real desde un celular. Las pruebas anteriores no lo vieron
+        // porque ninguna añadía un adjunto a un Kudo **cargado de la base**, que es el camino de
+        // verdad. Con la clave declarada como no generada, EF marca la entidad como nueva.
+        entidad.Property(a => a.Id).HasColumnName("id").ValueGeneratedNever();
         entidad.Property(a => a.KudoId).HasColumnName("kudo_id");
         entidad.Property(a => a.ClaveObjeto).HasColumnName("clave_objeto").HasMaxLength(300).IsRequired();
         entidad.Property(a => a.NombreOriginal).HasColumnName("nombre_original").HasMaxLength(255).IsRequired();
