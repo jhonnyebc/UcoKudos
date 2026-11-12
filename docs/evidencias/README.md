@@ -12,9 +12,9 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 |---|---|---|---|
 | 1 | CI | **Conseguida** | `01-ci-*.png` |
 | 2 | CD | **Conseguida** | `02-cd-*.png` |
-| 3 | Sonar | **Lista para capturar** | `03-sonar.png` |
-| 4 | Trivy | **Lista para capturar** | `04-trivy.png` |
-| 5 | Publicación | **Lista para capturar** | `05-publicacion.png` |
+| 3 | Sonar | **Conseguida** | `03-sonar-*.png` |
+| 4 | Trivy | **Conseguida**, con la ejecución bloqueada | `04-trivy-*.png` |
+| 5 | Publicación | **Conseguida** | `05-publicacion-*.png` |
 | 6 | Despliegue | **Lista para capturar** | `06-despliegue.png` |
 | 7 | Correo | Falta proveedor real | `07-correo.png` |
 | 8 | WhatsApp | **Verificado en producción** el 2026-11-11 | `08-whatsapp.jpg` |

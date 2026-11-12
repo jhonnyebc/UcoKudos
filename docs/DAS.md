@@ -508,7 +508,7 @@ eso vale en los dos sentidos.
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
 | Pruebas | **107 unitarias, 6 de arquitectura y 57 de integración** contra PostgreSQL real, con una omitida y documentada; **47 del cliente web**. Todas en verde en el pipeline |
-| Cobertura | **18,34 % de líneas**, medida sobre toda la solución. El umbral sigue en 0, así que esa puerta todavía no bloquea. Ver la nota de abajo |
+| Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
 | Funcionalidad | **Nivel 1 implementado.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado: persistencia, correo, WhatsApp, tiempo real y auditoría |
@@ -527,12 +527,29 @@ eso vale en los dos sentidos.
   calificaciones, reportes, aprobaciones—, pero sin pantallas que las usen. Por la regla 4 de
   gobierno, eso cuenta como no entregado.
 
-**Sobre la cobertura, que es el dato más incómodo de esta tabla.** ADR-0017 fija el umbral en 80 %
-de líneas y 70 % de ramas sobre el núcleo, arrancando en 0 y subiendo con el primer caso de uso. El
-umbral nunca subió. La consecuencia hay que decirla entera: **la puerta de cobertura está escrita y
-no está bloqueando**, que es justo el antipatrón contra el que argumenta ese mismo ADR. El 18,34 %
-además se mide sobre toda la solución, infraestructura incluida, así que no es comparable con el
-objetivo del núcleo. Lo correcto habría sido medir solo el núcleo y subir el umbral al alcanzarlo.
+**Sobre la cobertura, que necesita tres cifras y no una.** Una versión anterior de esta sección
+decía que la cobertura era del 18,34 % y que la puerta no bloqueaba. Las dos cosas eran ciertas por
+separado y juntas daban una idea equivocada, así que conviene separarlas.
+
+| Medida | Valor | ¿Bloquea? |
+|---|---|---|
+| Umbral de `dotnet test` en el pipeline | **0 %** | No. Está escrito y nunca subió |
+| Cobertura global de la solución | **18,34 %** | — Incluye infraestructura y API |
+| Puerta de calidad de Sonar sobre **código nuevo** | **81,25 %**, exigido ≥ 80 % | Pasa, pero el pipeline no la espera |
+
+La cifra que se corresponde con el objetivo de ADR-0017 es la de Sonar, porque el análisis excluye
+`UcoKudos.Infrastructure` y `UcoKudos.Api` de la cobertura: lo que mide es el **núcleo**, que es lo
+que el ADR quería medir. Y sobre código nuevo está en 81,25 %, por encima del 80 % exigido.
+
+El 18,34 % global es correcto pero no es comparable con ese objetivo: cuenta adaptadores y
+*endpoints*, que se prueban con las de integración y no con las unitarias.
+
+**Lo que sigue siendo verdad, y es lo que hay que declarar:** ninguna de las dos puertas de
+cobertura detiene el pipeline hoy. La de `dotnet test` porque su umbral es 0, y la de Sonar porque
+el análisis se envía sin `sonar.qualitygate.wait`, así que el trabajo termina antes de que
+SonarCloud evalúe el resultado. La puerta existe, se cumple y se puede ver en el tablero, pero un
+incumplimiento futuro no rompería la construcción. Convertirla en bloqueante es una línea de
+configuración.
 
 ---
 

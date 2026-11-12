@@ -234,3 +234,53 @@ La entrega llega hasta el registro. Poner esa versión en el servidor es una acc
 Que un `git push` toque producción sin que nadie lo decida es cómodo hasta el día que no lo es.
 Las dos etiquetas separadas permiten además desplegar solo lo que cambió: en el despliegue del
 cliente de esta noche, el contenedor de la API no se recreó.
+
+## 2026-11-11 — Análisis estático y escaneo de vulnerabilidades
+
+`03-sonar-puerta-de-calidad.png`: el tablero de SonarCloud sobre `main`, **puerta de calidad
+aprobada**, 6,3 mil líneas analizadas, 0 problemas nuevos y **81,25 % de cobertura sobre código
+nuevo**, con un mínimo exigido del 80 %.
+
+Esa cifra mide el **núcleo** y no toda la solución: el análisis excluye `UcoKudos.Infrastructure` y
+`UcoKudos.Api` de la cobertura, que es exactamente lo que ADR-0017 quería medir. La cobertura
+global, contando adaptadores y *endpoints*, es del 18,34 %, y esos se prueban con las de
+integración, no con las unitarias.
+
+**Lo que hay que declarar y no esconder:** la puerta se cumple y se ve en el tablero, pero **no
+detiene el pipeline**. El análisis se envía sin `sonar.qualitygate.wait`, así que el trabajo
+termina antes de que SonarCloud evalúe el resultado. Un incumplimiento futuro no rompería la
+construcción.
+
+`04-trivy-bloquea-la-imagen.png`: **la mejor evidencia de las doce, y es una captura en rojo.**
+
+El resumen del escaneo de la imagen `ucokudos-api:0.1.0-8579449` sobre Ubuntu 24.04:
+
+| Destino | Tipo | Vulnerabilidades |
+|---|---|---|
+| ucokudos-api (ubuntu 24.04) | ubuntu | 0 |
+| app/UcoKudos.Api.deps.json | dotnet-core | 0 |
+| **Microsoft.AspNetCore.App 10.0.14** | dotnet-core | **3** |
+| Microsoft.NETCore.App 10.0.14 | dotnet-core | 0 |
+
+Las tres son `CVE-2026-114146`, `114147` y `114149`, de severidad HIGH, corregidas en 10.0.15.
+
+**Ninguna la introdujo el código.** Aparecieron porque la base de datos de Trivy se actualiza a
+diario, y el mismo commit que ayer pasaba hoy no pasa. Ese es justo el riesgo que una puerta
+bloqueante cubre y una informativa no: sin ella se habría desplegado una imagen vulnerable sin que
+nadie se enterara. Se corrigió subiendo la imagen base a 10.0.15.
+
+Un detalle de la configuración que merece explicarse: Trivy corre con `ignore-unfixed: true`, así
+que solo bloquea por lo que **tiene corrección disponible**. Bloquear por algo sin parche detiene
+el trabajo sin ofrecer salida, y así es como se acaba desactivando la puerta.
+
+## 2026-11-11 — Publicación en el registro
+
+`05-publicacion-api.png` y `05-publicacion-web.png`: los dos paquetes en GHCR, **públicos**, con su
+historial de versiones.
+
+No hay ninguna etiqueta `latest`: cada publicación es `0.1.0-<sha corto>`. El historial permite
+saber qué se publicó y cuándo, y es lo que hace posible desplegar una versión concreta y volver
+atrás a otra.
+
+Que sean públicos tiene una consecuencia práctica: el servidor **no necesita credenciales** para
+descargarlas, así que no hay un secreto de registro que gestionar ni que rotar en la máquina.
