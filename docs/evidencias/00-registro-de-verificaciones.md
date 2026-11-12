@@ -284,3 +284,29 @@ atrás a otra.
 
 Que sean públicos tiene una consecuencia práctica: el servidor **no necesita credenciales** para
 descargarlas, así que no hay un secreto de registro que gestionar ni que rotar en la máquina.
+
+## 2026-11-11 — Pruebas: los cuatro niveles
+
+Recuentos tomados del pipeline, no de la memoria:
+
+| Nivel | Cuántas | Qué impide que una prueba del nivel de abajo no impide |
+|---|---|---|
+| Unitarias | **107** | Que una regla del dominio se incumpla. Corren en 229 ms, así que se ejecutan a cada cambio |
+| Arquitectura | **6** | Que el dominio referencie infraestructura. El compilador lo permite; estas no |
+| Integración | **57**, 1 omitida | Lo que solo falla contra PostgreSQL real: la traducción a SQL, el formato de las columnas, el encadenado de hashes |
+| Componentes del cliente | **52** | Que la interfaz deje de ser usable o accesible |
+
+**Por qué los cuatro niveles y no más de uno solo.** Cada uno coge una clase de fallo distinta, y
+este proyecto tiene ejemplos reales de cada una:
+
+- Las **de arquitectura** detectaron una violación real de la regla de dependencias que compilaba
+  sin problema.
+- Las **de integración** destaparon que el muro devolvía 500 siempre: la consulta proyectaba y
+  luego ordenaba sobre el resultado proyectado, y EF no lo traduce. Las unitarias pasaban.
+- Las **de componentes** cubren el teclado y la accesibilidad del buscador de personas, que una
+  prueba de API no puede ver.
+
+**La prueba omitida está declarada, no escondida.** Comprueba que el almacenamiento rechace las
+peticiones anónimas, y el servidor compatible con S3 que se usa en pruebas las atiende, así que
+pasaría siempre y no probaría nada. Dejarla activa sería peor que omitirla: daría verde sin
+comprobar lo que dice comprobar.
