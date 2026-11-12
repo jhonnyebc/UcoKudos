@@ -54,6 +54,19 @@ services:
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
+
+      # **El servidor de correo se configura aquí y no en el compose base, y la razón importa.**
+      #
+      # El base fija `Host: mailpit` y `Puerto: 1025` a mano, deliberadamente: el `.env` local
+      # tiene `SMTP_HOST=localhost`, que es correcto para conectarse desde Windows y equivocado
+      # dentro de un contenedor, donde «localhost» es la propia API. Fijarlo resolvió aquello.
+      #
+      # Pero en producción no existe ningún contenedor `mailpit`, así que ese valor fijo deja a la
+      # API enviando a una máquina que no está. Con el proveedor en `Simulado` no se notaba: el
+      # adaptador simulado ni siquiera abre la conexión. Al poner un proveedor real habría fallado
+      # todo envío sin que la configuración del `.env` tuviera nada que ver.
+      UcoKudos__Correo__Host: ${SMTP_HOST:-localhost}
+      UcoKudos__Correo__Puerto: ${SMTP_PUERTO:-587}
     ports: !reset []
 
   postgres:
