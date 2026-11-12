@@ -480,3 +480,38 @@ cerrada, eligió Web Push. No notifica dos veces lo mismo (ADR-0009).
 
 El «from Kudos» del título lo añade iOS con el nombre de la aplicación instalada: no sale del
 catálogo de mensajes.
+
+## 2026-11-12 — Respaldo con restauración probada
+
+Ejecutado contra el servidor. El respaldo produce dos archivos: el volcado de la base (52 KB) y
+el volumen de objetos (6,3 KB).
+
+La restauración se comprueba **sobre una base aparte**, `ucokudos_restauracion`, y compara los
+recuentos con la base viva:
+
+| Tabla | Original | Restaurada |
+|---|---|---|
+| `nucleo.persona` | 6 | 6 |
+| `nucleo.kudo` | 9 | 9 |
+| `audit.evento_auditoria` | 36 | 36 |
+| `notif.notificacion` | 27 | 27 |
+| `notif.outbox_mensaje` | 9 | 9 |
+
+Resultado: **RESTAURACIÓN CORRECTA**.
+
+**Esto cierra la mitigación del riesgo P-04**, que hasta hoy estaba declarada en el DAS y no
+existía: la fila prometía una protección inexistente, que es peor que un riesgo asumido
+abiertamente.
+
+**Por qué se restaura en una base aparte y no encima.** Un respaldo sin restauración probada no es
+un respaldo: es un archivo del que nadie sabe si sirve. Y la forma habitual de averiguarlo
+—restaurar sobre lo bueno— solo se puede hacer el día de la catástrofe, cuando ya no queda margen
+para descubrir que el archivo estaba mal. Restaurar al lado permite comprobarlo cualquier día, con
+la plataforma funcionando.
+
+El volumen de objetos ocupa 6,3 KB porque **no hay adjuntos subidos**: la pantalla de adjuntos es
+una de las ausencias declaradas. El respaldo los cubriría igual.
+
+El riesgo residual **sigue siendo alto** y conviene no disfrazarlo: esto es recuperación, no
+disponibilidad. Si la máquina cae, la plataforma cae; lo que cambia es que ahora los datos se
+pueden recuperar en otra.

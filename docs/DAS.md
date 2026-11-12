@@ -525,7 +525,6 @@ eso vale en los dos sentidos.
   tiene las operaciones de adjuntos; lo que no hay es pantalla.
 - No hay **pruebas de punta a punta** ni **prueba de carga**, así que los umbrales de QA-REND-01 y
   QA-REND-02 están sin medir. Son objetivos de diseño, no resultados verificados.
-- No hay **guion de respaldo** ni restauración probada.
 - **La exportación de telemetría estuvo sin implementar hasta el 2026-11-11**, y conviene dejarlo
   escrito porque es el fallo más instructivo de la entrega. La instrumentación propia existía —un
   `ActivitySource` y los contadores de negocio—, el panel estaba desplegado y sano, y la variable
@@ -588,7 +587,7 @@ Matriz de seguridad completa en [desarrollo-seguro.md](desarrollo-seguro.md). Lo
 | P-01 | **La plantilla de WhatsApp no se aprueba a tiempo.** El destinatario nunca escribió primero, así que todos los envíos van por plantilla: sin aprobación no sale ningún mensaje | Crítico | Enviarla a aprobación el primer día. Es la tarea con dependencia de un tercero más temprana |
 | P-02 | La cuenta del proveedor de nube exige verificación y tarda | Alto | Primera tarea de infraestructura, antes que cualquier otra |
 | P-03 | El plazo no alcanza para el nivel 1 completo | Alto | ADR-0019: el alcance está priorizado y la regla de gobierno protege la funcionalidad obligatoria |
-| P-04 | **Caída total por ser una sola máquina sin redundancia** | Crítico | Respaldo probado de base y objetos. Es recuperación, no disponibilidad: el riesgo residual es **alto** y viene del presupuesto cero. **Revisión del 2026-11-11: esta mitigación no se implementó.** No hay guion de respaldo ni restauración probada, así que el riesgo está vivo y sin red. Se deja escrito en lugar de dejar la fila sugiriendo una protección inexistente |
+| P-04 | **Caída total por ser una sola máquina sin redundancia** | Crítico | Respaldo probado de base y objetos. Es recuperación, no disponibilidad: el riesgo residual es **alto** y viene del presupuesto. **Revisión del 2026-11-12: implementado y comprobado.** `scripts/respaldar.sh` vuelca la base con `pg_dump` y empaqueta el volumen de objetos; `scripts/restaurar.sh` restaura **sobre una base aparte** y compara los recuentos con la viva, de modo que la restauración se prueba sin tocar producción ni esperar al día de la catástrofe. Primera comprobación con éxito el 2026-11-12: las cinco tablas cuadran |
 | P-05 | El pipeline falla la mañana de la entrega | Alto | Procedimiento manual de despliegue documentado |
 | P-06 | La demostración solo funciona en la red de casa | Alto | Probar el flujo completo desde un celular con datos móviles, fuera de esa red, al menos un día antes |
 | P-07 | El número de prueba de Meta solo envía a destinatarios registrados | Medio | Registrarlos antes de la demostración, incluido el del docente si va a recibir un Kudo en vivo |
