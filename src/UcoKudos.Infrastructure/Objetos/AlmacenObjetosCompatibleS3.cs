@@ -25,12 +25,20 @@ namespace UcoKudos.Infrastructure.Objetos;
 public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
 {
     private readonly IAmazonS3 _cliente;
+    private readonly IAmazonS3 _firmador;
     private readonly OpcionesObjetos _opciones;
 
-    public AlmacenObjetosCompatibleS3(OpcionesObjetos opciones, IAmazonS3 cliente)
+    public AlmacenObjetosCompatibleS3(
+        OpcionesObjetos opciones, IAmazonS3 cliente, ClienteDeFirmaS3? clienteDeFirma = null)
     {
         _opciones = opciones ?? throw new ArgumentNullException(nameof(opciones));
         _cliente = cliente ?? throw new ArgumentNullException(nameof(cliente));
+
+        // Firmar es un cálculo local: no hace ninguna llamada de red. Por eso puede hacerse con un
+        // cliente configurado con la dirección pública sin que esa dirección tenga que ser alcanzable
+        // desde la API. Sin cliente de firma se usa el mismo de las operaciones, que es lo que ocurre
+        // en local, donde las dos direcciones coinciden.
+        _firmador = clienteDeFirma?.Cliente ?? cliente;
     }
 
     /// <summary>
@@ -44,12 +52,12 @@ public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
     /// debe viajar en claro por internet.
     /// </summary>
     private Protocol Esquema =>
-        _opciones.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+        _opciones.EndpointDeFirma.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
             ? Protocol.HTTP
             : Protocol.HTTPS;
 
     public Task<string> UrlDeSubidaAsync(string clave, TimeSpan validez, CancellationToken ct) =>
-        Task.FromResult(_cliente.GetPreSignedURL(new GetPreSignedUrlRequest
+        Task.FromResult(_firmador.GetPreSignedURL(new GetPreSignedUrlRequest
         {
             BucketName = _opciones.Contenedor,
             Key = clave,
@@ -63,7 +71,7 @@ public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
     /// aquí, que es lo que hace posible QA-SEG-02: compartir el enlace fuera no da acceso permanente.
     /// </summary>
     public Task<string> UrlDeDescargaAsync(string clave, TimeSpan validez, CancellationToken ct) =>
-        Task.FromResult(_cliente.GetPreSignedURL(new GetPreSignedUrlRequest
+        Task.FromResult(_firmador.GetPreSignedURL(new GetPreSignedUrlRequest
         {
             BucketName = _opciones.Contenedor,
             Key = clave,
@@ -272,4 +280,16 @@ public static class FirmaDeArchivo
 
         return true;
     }
+}
+
+/// <summary>
+/// El cliente con el que se firman las URL que usa el navegador.
+///
+/// Es un tipo propio y no un segundo <c>IAmazonS3</c> registrado en el contenedor porque dos
+/// registros de la misma interfaz se pisan: quien pidiera <c>IAmazonS3</c> recibiría el último sin
+/// que nada avisara, y las operaciones internas acabarían yendo a la dirección pública.
+/// </summary>
+public sealed class ClienteDeFirmaS3(IAmazonS3 cliente)
+{
+    public IAmazonS3 Cliente { get; } = cliente ?? throw new ArgumentNullException(nameof(cliente));
 }

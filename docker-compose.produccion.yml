@@ -67,6 +67,13 @@ services:
       # todo envío sin que la configuración del `.env` tuviera nada que ver.
       UcoKudos__Correo__Host: ${SMTP_HOST:-localhost}
       UcoKudos__Correo__Puerto: ${SMTP_PUERTO:-587}
+
+      # **Con qué dirección se firman las URL de los adjuntos.** La API habla con el almacenamiento
+      # por la red interna (`http://objetos:4566`, fijada en el compose base), pero la URL
+      # prefirmada la usa el navegador, que no ve esa red. Se firma contra el dominio público, y el
+      # proxy encamina `/adjuntos/*` al almacenamiento sin cambiar el `Host`, que es lo que la firma
+      # protege. Ver docker/Caddyfile.
+      UcoKudos__Objetos__EndpointPublico: https://${DOMINIO:?Define DOMINIO en .env}
     ports: !reset []
 
   postgres:

@@ -16,6 +16,26 @@ public sealed class OpcionesObjetos
     public string Endpoint { get; set; } = "http://localhost:9000";
 
     /// <summary>
+    /// Dirección con la que se **firman** las URL que recibe el navegador, si difiere de
+    /// <see cref="Endpoint"/>.
+    ///
+    /// **Existen dos direcciones porque hay dos lectores distintos.** La API habla con el
+    /// almacenamiento por la red interna (<c>http://objetos:4566</c>), pero la URL prefirmada la usa
+    /// el *navegador*, que no ve esa red: un nombre interno de Docker no se resuelve desde fuera y,
+    /// además, sería contenido mixto desde una página HTTPS. Sin esta opción las URL salían firmadas
+    /// contra la dirección interna y subir un adjunto no podía funcionar en producción, aunque todas
+    /// las pruebas pasaran, porque corren dentro de la red de contenedores.
+    ///
+    /// Una firma SigV4 incluye el <c>Host</c> al que va dirigida, así que la URL tiene que firmarse
+    /// contra la dirección por la que de verdad se va a llamar. Si queda vacía se usa
+    /// <see cref="Endpoint"/>.
+    /// </summary>
+    public string? EndpointPublico { get; set; }
+
+    /// <summary>La dirección contra la que se firma: la pública si existe, si no la interna.</summary>
+    public string EndpointDeFirma => string.IsNullOrWhiteSpace(EndpointPublico) ? Endpoint : EndpointPublico;
+
+    /// <summary>
     /// El contenedor es **privado**: sin lectura anónima. Es la decisión central de ADR-0012, porque
     /// un contenedor público haría irrelevante todo lo demás.
     /// </summary>
