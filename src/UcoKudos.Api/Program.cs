@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using UcoKudos.Api.Endpoints;
 using UcoKudos.Api.Plataforma;
 using UcoKudos.Infrastructure;
+using UcoKudos.Infrastructure.Observabilidad;
 using UcoKudos.Infrastructure.Persistencia;
 
 var constructor = WebApplication.CreateBuilder(args);
@@ -18,6 +19,16 @@ constructor.Services.AgregarInfraestructura(constructor.Configuration);
 // y un valor nuevo no desplaza los existentes.
 constructor.Services.ConfigureHttpJsonOptions(opciones =>
     opciones.SerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
+// ---------------------------------------------------------------------------------------------
+// Observabilidad: exporta trazas, métricas y registros por OTLP (ADR-0014).
+//
+// Los nombres de las fuentes se pasan desde aquí, que es la raíz de composición y el único sitio
+// de la API al que se le permite conocer la capa de infraestructura.
+// ---------------------------------------------------------------------------------------------
+constructor.AgregarObservabilidad(
+    Instrumentacion.NombreFuente,
+    Instrumentacion.NombreMetricas);
 
 // ---------------------------------------------------------------------------------------------
 // Errores: el manejador traduce los errores de dominio a códigos de estado y añade el

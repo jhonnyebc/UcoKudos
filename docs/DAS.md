@@ -523,6 +523,14 @@ eso vale en los dos sentidos.
 - No hay **pruebas de punta a punta** ni **prueba de carga**, así que los umbrales de QA-REND-01 y
   QA-REND-02 están sin medir. Son objetivos de diseño, no resultados verificados.
 - No hay **guion de respaldo** ni restauración probada.
+- **La exportación de telemetría estuvo sin implementar hasta el 2026-11-11**, y conviene dejarlo
+  escrito porque es el fallo más instructivo de la entrega. La instrumentación propia existía —un
+  `ActivitySource` y los contadores de negocio—, el panel estaba desplegado y sano, y la variable
+  `OTEL_EXPORTER_OTLP_ENDPOINT` apuntaba a él. **Todo parecía configurado.** Pero no había ningún
+  paquete de OpenTelemetry en la solución, así que no existía nadie que recogiera esas señales y
+  las enviara: la instrumentación emitía al vacío y el panel mostraba cero trazas y cero registros
+  sin que nada fallara. Se detectó al ir a recoger la evidencia, no antes, porque **ningún síntoma
+  apunta a una telemetría que no se exporta**: la aplicación funciona igual de bien.
 - El **nivel 2** no tiene interfaz. Varias de sus operaciones existen en la API —réplicas,
   calificaciones, reportes, aprobaciones—, pero sin pantallas que las usen. Por la regla 4 de
   gobierno, eso cuenta como no entregado.
