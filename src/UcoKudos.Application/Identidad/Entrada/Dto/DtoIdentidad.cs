@@ -36,3 +36,14 @@ public sealed record FacultadDto(Guid Id, string Nombre, string Codigo, IReadOnl
 
 /// <summary>Un rol del catálogo, para que el cliente muestre las opciones del registro.</summary>
 public sealed record RolDto(short Id, string Nombre, string Ambito);
+
+/// <summary>
+/// Una persona tal y como la ve un buscador, para elegir a quién reconocer.
+///
+/// **Lleva lo mínimo, y eso es la decisión importante de este tipo.** <see cref="PersonaDto"/>
+/// incluye el correo institucional, el estado de la cuenta y qué tiene verificado; devolver eso en
+/// un buscador abierto a cualquier usuario autenticado convertiría una caja de texto en un volcado
+/// del directorio de la universidad: escribiendo «a» se obtendría el correo de media institución.
+/// Para elegir destinatario basta el nombre, así que solo va el nombre.
+/// </summary>
+public sealed record PersonaBuscadaDto(Guid Id, string NombreCompleto);

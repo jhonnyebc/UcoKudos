@@ -94,6 +94,24 @@ public static class EndpointsIdentidad
         .WithName("RechazarSolicitud")
         .WithSummary("Rechaza una solicitud con su motivo");
 
+        grupo.MapGet("/personas", async (
+            string? busqueda,
+            int? tamano,
+            IIdentidadPuertoEntrada puerto,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            return Results.Ok(await puerto.BuscarPersonasAsync(contexto, busqueda, tamano, ct));
+        })
+        .WithName("BuscarPersonas")
+        .WithSummary("Personas activas cuyo nombre contiene el texto, para elegir destinatario")
+        .WithDescription(
+            "Devuelve solo identificador y nombre: el correo y el celular no salen de aquí. " +
+            "Excluye a quien busca, porque el dominio prohíbe reconocerse a uno mismo. " +
+            "Con menos de dos caracteres devuelve una lista vacía en lugar de un error.");
+
         grupo.MapGet("/estructura", async (
             IIdentidadPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.EstructuraAsync(ct)))

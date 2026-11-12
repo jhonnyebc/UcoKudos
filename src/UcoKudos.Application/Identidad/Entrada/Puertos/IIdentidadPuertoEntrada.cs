@@ -20,6 +20,13 @@ public interface IIdentidadPuertoEntrada
     Task RechazarAsync(ContextoPeticion contexto, Guid personaId, string motivo, CancellationToken ct);
 
     /// <summary>Facultades con sus programas, para elegir al registrarse (RF-05).</summary>
+    /// <summary>
+    /// Personas activas cuyo nombre contiene el texto, para elegir destinatario (apoya RF-07).
+    /// Excluye a quien busca: el dominio prohíbe reconocerse a uno mismo.
+    /// </summary>
+    Task<IReadOnlyList<PersonaBuscadaDto>> BuscarPersonasAsync(
+        ContextoPeticion contexto, string? texto, int? tamano, CancellationToken ct);
+
     Task<IReadOnlyList<FacultadDto>> EstructuraAsync(CancellationToken ct);
 
     /// <summary>El catálogo de los siete roles del enunciado.</summary>

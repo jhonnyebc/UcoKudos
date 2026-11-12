@@ -10,7 +10,8 @@ namespace UcoKudos.Application.Identidad.Entrada.Adaptadores;
 public sealed class IdentidadAdaptadorEntrada(
     RegistrarCuentaCasoUso registrar,
     ResolverSolicitudCasoUso resolver,
-    ConsultarIdentidadCasoUso consultar) : IIdentidadPuertoEntrada
+    ConsultarIdentidadCasoUso consultar,
+    BuscarPersonasCasoUso buscar) : IIdentidadPuertoEntrada
 {
     public Task<PersonaDto> RegistrarAsync(RegistrarCuentaDto datos, string correlacionId, CancellationToken ct) =>
         registrar.EjecutarAsync(datos, correlacionId, ct);
@@ -26,6 +27,10 @@ public sealed class IdentidadAdaptadorEntrada(
 
     public Task RechazarAsync(ContextoPeticion contexto, Guid personaId, string motivo, CancellationToken ct) =>
         resolver.RechazarAsync(contexto, personaId, motivo, ct);
+
+    public Task<IReadOnlyList<PersonaBuscadaDto>> BuscarPersonasAsync(
+        ContextoPeticion contexto, string? texto, int? tamano, CancellationToken ct) =>
+        buscar.EjecutarAsync(contexto, texto, tamano, ct);
 
     public Task<IReadOnlyList<FacultadDto>> EstructuraAsync(CancellationToken ct) =>
         consultar.EstructuraAsync(ct);

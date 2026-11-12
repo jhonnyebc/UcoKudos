@@ -8,6 +8,7 @@ using UcoKudos.Application.Comun.Salida.Puertos;
 using UcoKudos.Application.Identidad.CasosUso;
 using UcoKudos.Application.Identidad.Entrada.Adaptadores;
 using UcoKudos.Application.Identidad.Entrada.Puertos;
+using UcoKudos.Application.Identidad.Salida.Puertos;
 using UcoKudos.Application.Interaccion.CasosUso;
 using UcoKudos.Application.Interaccion.Entrada.Adaptadores;
 using UcoKudos.Application.Interaccion.Entrada.Puertos;
@@ -96,6 +97,7 @@ public static class ServiciosInfraestructura
     {
         servicios.AddScoped<IConsultasMuro, ConsultasMuroEf>();
         servicios.AddScoped<IConsultasAvisos, ConsultasAvisosEf>();
+        servicios.AddScoped<IConsultasPersonas, ConsultasPersonasEf>();
 
         // La caché es singleton: compartirla entre peticiones es justamente su razón de existir.
         servicios.AddSingleton<CacheMemoria>();
@@ -208,6 +210,7 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<RegistrarCuentaCasoUso>();
         servicios.AddScoped<ResolverSolicitudCasoUso>();
         servicios.AddScoped<ConsultarIdentidadCasoUso>();
+        servicios.AddScoped<BuscarPersonasCasoUso>();
         servicios.AddScoped<ResponderCasoUso>();
         servicios.AddScoped<CalificarCasoUso>();
         servicios.AddScoped<ReportarContenidoCasoUso>();
