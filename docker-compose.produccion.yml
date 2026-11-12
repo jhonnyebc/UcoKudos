@@ -30,7 +30,11 @@ services:
       DOMINIO: ${DOMINIO:?Define DOMINIO en .env}
       CORREO_TLS: ${CORREO_TLS:?Define CORREO_TLS en .env}
     volumes:
-      - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      # Se monta el DIRECTORIO y no el archivo. Un archivo montado por separado conserva el inode
+      # que tenía al crear el contenedor: cuando `git pull` lo reemplaza, el contenedor sigue viendo
+      # la versión vieja y ni siquiera `caddy reload` la releería. Con el directorio, el reemplazo
+      # se ve. Es un directorio propio (docker/proxy) para no exponer al contenedor lo demás.
+      - ./docker/proxy:/etc/caddy:ro
       - ucokudos-web:/srv/web:ro
       - ucokudos-caddy-datos:/data
       - ucokudos-caddy-config:/config
@@ -72,7 +76,7 @@ services:
       # por la red interna (`http://objetos:4566`, fijada en el compose base), pero la URL
       # prefirmada la usa el navegador, que no ve esa red. Se firma contra el dominio público, y el
       # proxy encamina `/adjuntos/*` al almacenamiento sin cambiar el `Host`, que es lo que la firma
-      # protege. Ver docker/Caddyfile.
+      # protege. Ver docker/proxy/Caddyfile.
       UcoKudos__Objetos__EndpointPublico: https://${DOMINIO:?Define DOMINIO en .env}
     ports: !reset []
 

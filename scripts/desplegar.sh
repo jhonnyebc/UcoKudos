@@ -59,6 +59,28 @@ $COMPOSE up web
 echo "==> Arrancando la versión nueva"
 $COMPOSE up -d
 
+# **El proxy se recarga explícitamente, y es lo que impide un fallo silencioso.** Caddy no relee su
+# archivo de configuración por su cuenta, y `up -d` solo recrea un servicio cuya definición cambió:
+# un cambio en el Caddyfile solo llegaba al servidor y no hacía nada hasta el siguiente reinicio,
+# sin ningún error que lo delatara. Lo notó la revisión del cambio de los adjuntos, no un fallo.
+#
+# La recarga es graceful —no corta conexiones— y valida antes de aplicar: si la configuración es
+# inválida, Caddy conserva la anterior y devuelve error, y con `set -e` el despliegue se detiene
+# aquí en lugar de dar por bueno algo que no se aplicó.
+#
+# Reintenta porque, justo después de recrear el contenedor, el administrador de Caddy puede no
+# haber arrancado todavía.
+echo "==> Recargando la configuración del proxy"
+intentos=0
+until $COMPOSE exec -T proxy caddy reload --config /etc/caddy/Caddyfile --adapter caddyfile; do
+  intentos=$((intentos + 1))
+  if [ "$intentos" -ge 10 ]; then
+    echo "No se pudo recargar el proxy. La configuración nueva NO está aplicada." >&2
+    exit 1
+  fi
+  sleep 2
+done
+
 echo "==> Comprobando"
 # No se da por bueno un despliegue porque el contenedor arrancó: se comprueba que la aplicación
 # responde y que sus dependencias responden. Un servicio «vivo» pero no «listo» acepta peticiones
