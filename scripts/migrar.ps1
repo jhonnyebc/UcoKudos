@@ -21,7 +21,15 @@
     ./scripts/migrar.ps1
 #>
 [CmdletBinding()]
-param()
+param(
+    # Nombre de una migración nueva. Sin este parámetro, el guion aplica las pendientes.
+    #
+    # Crear migraciones también va por contenedor porque `dotnet ef migrations add` necesita
+    # cargar el modelo, y Smart App Control bloquea en este equipo los ensamblados recién
+    # compilados. Conviene tenerlo resuelto de antemano: en una sustentación no hay tiempo de
+    # descubrir que el camino habitual no funciona.
+    [string]$Crear
+)
 
 $ErrorActionPreference = 'Stop'
 
@@ -40,17 +48,29 @@ if (-not (Test-Path "$raiz/.env")) {
     exit 1
 }
 
-Write-Host "Aplicando migraciones en contenedor ($imagen)" -ForegroundColor Cyan
+if ($Crear) {
+    Write-Host "Creando la migracion '$Crear' en contenedor ($imagen)" -ForegroundColor Cyan
+    $argumentos = @('sh', 'scripts/migrar-en-contenedor.sh', 'crear', $Crear)
+}
+else {
+    Write-Host "Aplicando migraciones en contenedor ($imagen)" -ForegroundColor Cyan
+    $argumentos = @('sh', 'scripts/migrar-en-contenedor.sh', 'aplicar')
+}
 
 & docker run --rm `
     -v "${raiz}:/src" `
     -v "${volumenNuget}:/root/.nuget/packages" `
     --add-host 'host.docker.internal:host-gateway' `
-    -w /src $imagen sh scripts/migrar-en-contenedor.sh
+    -w /src $imagen @argumentos
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "La migración falló." -ForegroundColor Red
     exit 1
 }
 
-Write-Host "Migraciones aplicadas." -ForegroundColor Green
+if ($Crear) {
+    Write-Host "Migracion creada. Revisar los archivos nuevos y aplicarla con ./scripts/migrar.ps1" -ForegroundColor Green
+}
+else {
+    Write-Host "Migraciones aplicadas." -ForegroundColor Green
+}

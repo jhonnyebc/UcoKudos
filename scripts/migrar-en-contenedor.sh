@@ -5,6 +5,12 @@
 # escribe en disco ni se imprime: la contraseña es un secreto (ADR-0018).
 set -eu
 
+# Modo: «aplicar» (por omisión) o «crear <Nombre>». Crear existe porque `dotnet ef migrations add`
+# no se puede ejecutar en el equipo del autor: Smart App Control bloquea los ensamblados recién
+# compilados, y la herramienta necesita cargar el modelo para generar la migración.
+MODO="${1:-aplicar}"
+NOMBRE="${2:-}"
+
 # Copia del código dentro del contenedor, fuera del volumen montado desde Windows.
 TRABAJO=/trabajo
 
@@ -46,6 +52,42 @@ dotnet tool restore > /dev/null
 
 dotnet restore src/UcoKudos.Api/UcoKudos.Api.csproj > /dev/null
 
-dotnet ef database update \
-  --project src/UcoKudos.Infrastructure \
-  --startup-project src/UcoKudos.Api
+case "$MODO" in
+  aplicar)
+    dotnet ef database update \
+      --project src/UcoKudos.Infrastructure \
+      --startup-project src/UcoKudos.Api
+    ;;
+
+  crear)
+    if [ -z "$NOMBRE" ]; then
+      echo "Falta el nombre. Uso: ./scripts/migrar.ps1 -Crear NombreDeLaMigracion" >&2
+      exit 1
+    fi
+
+    # --output-dir es necesario: por omisión EF escribiría en `Migrations/`, y las de este
+    # repositorio viven en `Persistencia/Migraciones`. Dos carpetas de migraciones en el mismo
+    # proyecto es el camino corto a un historial que no se puede aplicar.
+    dotnet ef migrations add "$NOMBRE" \
+      --project src/UcoKudos.Infrastructure \
+      --startup-project src/UcoKudos.Api \
+      --output-dir Persistencia/Migraciones
+
+    # **Los archivos generados hay que devolverlos al repositorio.** Todo esto ocurre sobre la
+    # copia de /trabajo, así que sin este paso la migración se crearía, se vería en pantalla y
+    # desaparecería al terminar el contenedor, que es el peor desenlace posible: parece que
+    # funcionó y no queda nada.
+    echo
+    echo "==> Copiando la migración al repositorio"
+    cp -f "$TRABAJO/src/UcoKudos.Infrastructure/Persistencia/Migraciones/"*.cs \
+      /src/src/UcoKudos.Infrastructure/Persistencia/Migraciones/
+
+    echo "==> Últimos archivos en la carpeta de migraciones:"
+    ls -1t /src/src/UcoKudos.Infrastructure/Persistencia/Migraciones/ | head -4
+    ;;
+
+  *)
+    echo "Modo desconocido: $MODO. Use «aplicar» o «crear»." >&2
+    exit 1
+    ;;
+esac
