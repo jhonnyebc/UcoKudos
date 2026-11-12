@@ -21,7 +21,7 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 | 9 | Notificaciones push | **Lista para capturar** | `09-push.png` |
 | 10 | Auditoría | **Conseguida** con los dos roles | `10-auditoria-*.png` |
 | 11 | Observabilidad | Falta la traza completa | `11-observabilidad.png` |
-| 12 | Pruebas | **Documentada**: falta la captura del pipeline | `12-pruebas.png` |
+| 12 | Pruebas | **Conseguida** | `12-pruebas-*.png` |
 
 ## Cómo se obtiene cada una
 

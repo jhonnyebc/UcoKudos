@@ -537,12 +537,27 @@ separado y juntas daban una idea equivocada, así que conviene separarlas.
 | Cobertura global de la solución | **18,34 %** | — Incluye infraestructura y API |
 | Puerta de calidad de Sonar sobre **código nuevo** | **81,25 %**, exigido ≥ 80 % | Pasa, pero el pipeline no la espera |
 
-La cifra que se corresponde con el objetivo de ADR-0017 es la de Sonar, porque el análisis excluye
-`UcoKudos.Infrastructure` y `UcoKudos.Api` de la cobertura: lo que mide es el **núcleo**, que es lo
-que el ADR quería medir. Y sobre código nuevo está en 81,25 %, por encima del 80 % exigido.
+El desglose por proyecto, tomado del pipeline, es el que de verdad explica esas cifras:
 
-El 18,34 % global es correcto pero no es comparable con ese objetivo: cuenta adaptadores y
-*endpoints*, que se prueban con las de integración y no con las unitarias.
+| Proyecto | Líneas | Ramas |
+|---|---|---|
+| `UcoKudos.Domain` | **47,24 %** | 44,17 % |
+| `UcoKudos.Application` | **0,93 %** | 1,78 % |
+
+**Ese 0,93 % no significa que la capa de aplicación esté sin probar, y conviene entender por qué.**
+El informe de cobertura que se genera y que se envía a Sonar sale **solo de las pruebas
+unitarias**: el pipeline apunta a `tests/UcoKudos.UnitTests/.../coverage.opencover.xml`. Los casos
+de uso se ejercitan sobre todo desde las **57 pruebas de integración**, cuya cobertura no se
+recoge ni se fusiona con la anterior. Así que el instrumento mide menos de lo que el proyecto
+prueba.
+
+Esa es la limitación real, y es metodológica antes que de esfuerzo: **la cifra que se publica no
+representa lo que se ejercita**. Fusionar la cobertura de los tres proyectos de prueba daría un
+número honesto; hoy no se hace.
+
+El 81,25 % de Sonar sobre código nuevo es cierto y es la única cifra comparable con el objetivo del
+ADR, pero hay que leerla con lo anterior delante: mide código nuevo que, además, resulta estar
+cubierto por unitarias.
 
 **Lo que sigue siendo verdad, y es lo que hay que declarar:** ninguna de las dos puertas de
 cobertura detiene el pipeline hoy. La de `dotnet test` porque su umbral es 0, y la de Sonar porque

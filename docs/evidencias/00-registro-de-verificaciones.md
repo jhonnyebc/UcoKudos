@@ -310,3 +310,50 @@ este proyecto tiene ejemplos reales de cada una:
 peticiones anónimas, y el servidor compatible con S3 que se usa en pruebas las atiende, así que
 pasaría siempre y no probaría nada. Dejarla activa sería peor que omitirla: daría verde sin
 comprobar lo que dice comprobar.
+
+`12-pruebas-pasos-del-pipeline.png`: los pasos del trabajo de back-end. Los tres niveles aparecen
+como **pasos separados**, cada uno con su propio tiempo:
+
+- Pruebas unitarias con gate de cobertura del núcleo — 6 s
+- Pruebas de arquitectura (reglas de ADR-0001) — 10 s
+- Pruebas de integración (Testcontainers) — 36 s
+
+Están separados a propósito y no agrupados en un `dotnet test` único. Cuando uno falla, el nombre
+del paso ya dice **qué clase de fallo** es: una regla de negocio rota, una violación de la
+arquitectura o algo que solo aparece contra PostgreSQL real. Agruparlos obligaría a leer el
+registro para averiguar lo que el nombre puede decir solo.
+
+Se ve además que los 36 segundos de integración son más que todo lo demás junto, lo cual es
+esperable: levantan un PostgreSQL de verdad con Testcontainers. Ese coste es la razón de la
+pirámide, no un problema.
+
+### Los recuentos, paso a paso
+
+`12-pruebas-unitarias-y-cobertura.png`, `12-pruebas-de-arquitectura.png` y
+`12-pruebas-de-integracion.png`: la salida de cada nivel.
+
+```
+Passed! - Failed: 0, Passed: 107, Skipped: 0, Total: 107  (unitarias, 229 ms)
+Passed! - Failed: 0, Passed:   6, Skipped: 0, Total:   6  (arquitectura, 1 s)
+Passed! - Failed: 0, Passed:  57, Skipped: 1, Total:  58  (integración, 15 s)
+```
+
+La omitida aparece con nombre y todo:
+`AlmacenObjetosRealTests.Pedir_el_objeto_sin_firma_es_rechazado [SKIP]`. Está declarada arriba.
+
+**La captura de las unitarias trae además la tabla de cobertura, y es el dato más honesto de la
+entrega:**
+
+| Proyecto | Líneas | Ramas |
+|---|---|---|
+| `UcoKudos.Domain` | 47,24 % | 44,17 % |
+| `UcoKudos.Application` | **0,93 %** | 1,78 % |
+| Total | 18,8 % | 25,77 % |
+
+Ese 0,93 % no quiere decir que la capa de aplicación esté sin probar. El informe sale **solo de las
+unitarias**, y los casos de uso se ejercitan sobre todo desde las 57 de integración, cuya cobertura
+no se recoge ni se fusiona. **El instrumento mide menos de lo que el proyecto prueba.**
+
+Es una limitación metodológica y conviene decirla antes de que la pregunten: fusionar la cobertura
+de los tres proyectos de prueba daría un número representativo. Hoy no se hace, así que la cifra
+publicada subestima lo que realmente se ejercita.
