@@ -105,3 +105,21 @@ pudo completar la operación», que habría parecido un fallo en lugar de una re
 La API ofrecía la verificación desde el principio y estaba cubierta por pruebas, pero **en
 producción era inalcanzable**: no figuraba en ninguna interfaz y llamarla a mano exige un token que
 el cliente guarda solo en memoria. Una garantía que nadie puede comprobar no tranquiliza a nadie.
+
+### La misma pantalla, con un rol que sí puede
+
+`10-auditoria-cadena-integra.png`: la misma operación ejecutada por el **Rector** contra el mismo
+sistema, segundos después. Resultado: *«La cadena está intacta: se verificaron 16 eventos.»*
+
+Las dos capturas juntas valen más que cada una por separado. No cambió el código, ni la pantalla,
+ni el servidor: cambió **quién pregunta**. Eso es una regla de autorización demostrada en ejecución,
+y responde a RF-03 y RF-04 sin recurrir a un diagrama de permisos.
+
+Los 16 eventos son más que los Kudos publicados porque se audita **toda** acción con consecuencias,
+no solo las publicaciones.
+
+**Lo que esta verificación comprueba de verdad.** Cada evento guarda un hash SHA-256 de sus propios
+datos encadenado con el del anterior. Recalcularlos detecta las dos formas de manipular un
+registro: **editar** una fila, porque su hash deja de corresponder a sus datos, y **borrarla**,
+porque el siguiente deja de apuntar a un eslabón existente. Un registro sin encadenar solo detecta
+lo primero, y el segundo caso es el que más interesa a quien quiere tapar algo.
