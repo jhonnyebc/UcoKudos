@@ -102,7 +102,7 @@ Los siete del enunciado. Dos vienen cuantificados por el cliente y son los que m
 
 **Responsividad contra consistencia inmediata.** Se eligió responder al usuario en cuanto la transacción confirma, aceptando que los avisos lleguen segundos después. El coste es que las notificaciones son eventualmente consistentes; la ganancia es que publicar no depende de tres servicios externos (ADR-0005).
 
-**Costo contra disponibilidad.** El presupuesto cero obliga a una sola máquina sin redundancia. Se eligió una máquina virtual de capa gratuita permanente en lugar de una plataforma gratuita de aplicaciones, porque esas suspenden el servicio por inactividad y tardan hasta un minuto en despertar: inaceptable durante una sustentación (ADR-0016). El riesgo residual, caída total si cae la máquina, se declara.
+**Costo contra disponibilidad.** El presupuesto obliga a una sola máquina sin redundancia. Se eligió una máquina virtual propia en lugar de una plataforma gratuita de aplicaciones, porque esas suspenden el servicio por inactividad y tardan hasta un minuto en despertar: inaceptable durante una sustentación (ADR-0016). El riesgo residual, caída total si cae la máquina, se declara. **Revisión del 2026-11-11:** no se consiguió capa gratuita permanente —Oracle rechazó la creación de la cuenta tras verificar la tarjeta— y la plataforma corre sobre crédito de estudiante de Azure, que es finito. La consecuencia operativa es que la máquina hay que desasignarla cuando no se usa, de modo que **la disponibilidad pasó a depender de una acción manual**, que es peor de lo que esta decisión suponía.
 
 ---
 
@@ -393,7 +393,7 @@ Compilación sin advertencias, formato, cobertura del núcleo, arquitectura, int
 
 ### 13.3 Despliegue
 
-Una máquina virtual de capa gratuita **permanente**, con todo en contenedores y un único puerto expuesto tras un proxy con TLS automático. HTTPS no es una mejora: el service worker de la PWA y la API de notificaciones solo funcionan sobre un origen seguro.
+Una máquina virtual propia, con todo en contenedores y un único puerto expuesto tras un proxy con TLS automático. HTTPS no es una mejora: el service worker de la PWA y la API de notificaciones solo funcionan sobre un origen seguro.
 
 El criterio que decidió entre las opciones no fue técnico sino de riesgo de calendario: **que la plataforma responda de inmediato cuando el docente abra la URL**.
 
@@ -455,7 +455,7 @@ Los 19 ADR están en [adr/README.md](adr/README.md), todos con la misma estructu
 | 0013 | Auditoría de solo inserción con cadena de hashes |
 | 0014 | OpenTelemetry con la traza propagada a la frontera asíncrona |
 | 0015 | Cliente como PWA mobile first en React |
-| 0016 | Contenedores sobre una máquina de capa gratuita permanente |
+| 0016 | Contenedores sobre una máquina virtual propia (revisado: no se consiguió capa gratuita permanente) |
 | 0017 | DevSecOps con puertas bloqueantes y pirámide automatizada |
 | 0018 | Configuración por entorno y secretos fuera del repositorio |
 | 0019 | Alcance de la línea base en tres niveles declarados |
@@ -496,18 +496,43 @@ Verificación del celular por código de un solo uso, gestión completa de la es
 4. Una funcionalidad incompleta no se despliega: es peor que ausente.
 5. El último día es para revisión, no para desarrollo.
 
-### 16.5 Estado al cierre de este documento
+### 16.5 Estado
+
+**Revisión del 2026-11-11.** La versión anterior de esta tabla describía el cierre de la Fase 0 y
+declaraba la funcionalidad sin implementar y el despliegue sin hacer. Se deja constancia del cambio
+en lugar de sustituirlo en silencio: la regla 2 de gobierno obliga a declarar lo no implementado, y
+eso vale en los dos sentidos.
 
 | Elemento | Estado |
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | 3 unitarias y 6 de arquitectura en verde. Integración y punta a punta: proyectos preparados, sin pruebas escritas |
-| Pipeline | Escrito, con sus doce puertas. **Sin ejecutar todavía en GitHub** |
-| Despliegue | No realizado |
-| Funcionalidad | No implementada |
+| Pruebas | **96 unitarias, 6 de arquitectura y 46 de integración** contra PostgreSQL real, con una omitida y documentada; **40 del cliente web**. Todas en verde en el pipeline |
+| Cobertura | **18,34 % de líneas**, medida sobre toda la solución. El umbral sigue en 0, así que esa puerta todavía no bloquea. Ver la nota de abajo |
+| Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
+| Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
+| Funcionalidad | **Nivel 1 implementado.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado: persistencia, correo, WhatsApp, tiempo real y auditoría |
+| Canales | WhatsApp y tiempo real **reales** en producción. El correo sigue en modo simulado: falta contratar un proveedor transaccional |
 
-Lo honesto es decir que a la fecha de este documento está completo el diseño y la línea base estructural, y pendiente la implementación y el despliegue.
+**Lo que no está, y conviene decirlo antes de que se pregunte:**
+
+- El **correo real**. El adaptador funciona y está probado contra un contenedor de captura, pero en
+  el servidor no hay proveedor contratado.
+- Del cliente web faltan el **detalle de un Kudo**, la **subida de adjuntos** y el **buscador de
+  personas**: hoy el destinatario se indica pegando su identificador.
+- No hay **pruebas de punta a punta** ni **prueba de carga**, así que los umbrales de QA-REND-01 y
+  QA-REND-02 están sin medir. Son objetivos de diseño, no resultados verificados.
+- No hay **guion de respaldo** ni restauración probada.
+- El **nivel 2** no tiene interfaz. Varias de sus operaciones existen en la API —réplicas,
+  calificaciones, reportes, aprobaciones—, pero sin pantallas que las usen. Por la regla 4 de
+  gobierno, eso cuenta como no entregado.
+
+**Sobre la cobertura, que es el dato más incómodo de esta tabla.** ADR-0017 fija el umbral en 80 %
+de líneas y 70 % de ramas sobre el núcleo, arrancando en 0 y subiendo con el primer caso de uso. El
+umbral nunca subió. La consecuencia hay que decirla entera: **la puerta de cobertura está escrita y
+no está bloqueando**, que es justo el antipatrón contra el que argumenta ese mismo ADR. El 18,34 %
+además se mide sobre toda la solución, infraestructura incluida, así que no es comparable con el
+objetivo del núcleo. Lo correcto habría sido medir solo el núcleo y subir el umbral al alcanzarlo.
 
 ---
 
@@ -520,7 +545,7 @@ Matriz de seguridad completa en [desarrollo-seguro.md](desarrollo-seguro.md). Lo
 | P-01 | **La plantilla de WhatsApp no se aprueba a tiempo.** El destinatario nunca escribió primero, así que todos los envíos van por plantilla: sin aprobación no sale ningún mensaje | Crítico | Enviarla a aprobación el primer día. Es la tarea con dependencia de un tercero más temprana |
 | P-02 | La cuenta del proveedor de nube exige verificación y tarda | Alto | Primera tarea de infraestructura, antes que cualquier otra |
 | P-03 | El plazo no alcanza para el nivel 1 completo | Alto | ADR-0019: el alcance está priorizado y la regla de gobierno protege la funcionalidad obligatoria |
-| P-04 | **Caída total por ser una sola máquina sin redundancia** | Crítico | Respaldo probado de base y objetos. Es recuperación, no disponibilidad: el riesgo residual es **alto** y viene del presupuesto cero |
+| P-04 | **Caída total por ser una sola máquina sin redundancia** | Crítico | Respaldo probado de base y objetos. Es recuperación, no disponibilidad: el riesgo residual es **alto** y viene del presupuesto cero. **Revisión del 2026-11-11: esta mitigación no se implementó.** No hay guion de respaldo ni restauración probada, así que el riesgo está vivo y sin red. Se deja escrito en lugar de dejar la fila sugiriendo una protección inexistente |
 | P-05 | El pipeline falla la mañana de la entrega | Alto | Procedimiento manual de despliegue documentado |
 | P-06 | La demostración solo funciona en la red de casa | Alto | Probar el flujo completo desde un celular con datos móviles, fuera de esa red, al menos un día antes |
 | P-07 | El número de prueba de Meta solo envía a destinatarios registrados | Medio | Registrarlos antes de la demostración, incluido el del docente si va a recibir un Kudo en vivo |

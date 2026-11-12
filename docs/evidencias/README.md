@@ -31,7 +31,9 @@ Las ejecuciones en verde de los dos repositorios. En el back-end son seis trabaj
 
 `https://github.com/jhonnyebc/UcoKudos/actions` y `https://github.com/jhonnyebc/UcoKudosWeb/actions`
 
-**Qué impide:** que entre código que no compila, sin formato, con pruebas en rojo o por debajo del umbral de cobertura. Cada trabajo bloquea; ninguno es informativo, que es el antipatrón contra el que escribe ADR-0017.
+**Qué impide:** que entre código que no compila, sin formato o con pruebas en rojo. Cada trabajo bloquea; ninguno es informativo, que es el antipatrón contra el que escribe ADR-0017.
+
+**Con una excepción que hay que decir, no esconder:** la puerta de **cobertura** tiene el umbral en 0, así que está escrita y no bloquea. La cobertura real es del 18,34 % de líneas sobre toda la solución. Es el antipatrón del propio ADR-0017 dentro del pipeline que lo aplica, y queda declarado en la sección 16.5 del DAS.
 
 ### 2. CD
 

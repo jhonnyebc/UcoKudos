@@ -212,7 +212,9 @@ Todo lo de esta sección se hace **una vez**. Después, desplegar una versión n
 
 ### 8.1 La máquina
 
-Una máquina virtual de capa gratuita permanente (ADR-0016). Con 1 GB de memoria va justo: conviene 2 GB o más, porque corren cinco contenedores y PostgreSQL no comparte de buena gana.
+Una máquina virtual con Docker (ADR-0016). Con 1 GB de memoria va justo: conviene 2 GB o más, porque corren cinco contenedores y PostgreSQL no comparte de buena gana.
+
+La instalación real usa **Azure for Students**, `Standard_B2as_v2` con 2 núcleos y 8 GB, Ubuntu 24.04 en West US 2. No es capa gratuita permanente sino crédito finito, así que **hay que desasignar la máquina cuando no se use**: detenerla desde dentro con `shutdown` no basta, porque queda reservada y se sigue cobrando. Hay que usar *Stop* en el portal, que la deja «Detenida (desasignada)».
 
 Al crearla hay que **guardar la clave privada SSH**: sin ella no se entra, y no se puede volver a descargar.
 
