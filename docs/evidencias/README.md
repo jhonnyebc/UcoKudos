@@ -15,7 +15,7 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 | 3 | Sonar | **Conseguida** | `03-sonar-*.png` |
 | 4 | Trivy | **Conseguida**, con la ejecución bloqueada | `04-trivy-*.png` |
 | 5 | Publicación | **Conseguida** | `05-publicacion-*.png` |
-| 6 | Despliegue | **Lista para capturar** | `06-despliegue.png` |
+| 6 | Despliegue | **Conseguida** desde datos móviles | `06-despliegue-*.jpg` |
 | 7 | Correo | **Conseguida** con SMTP real | `07-correo-recibido.png` |
 | 8 | WhatsApp | **Verificado en producción** el 2026-11-11 | `08-whatsapp.jpg` |
 | 9 | Notificaciones push | **Lista para capturar** | `09-push.png` |

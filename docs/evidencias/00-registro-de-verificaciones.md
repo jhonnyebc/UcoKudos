@@ -427,3 +427,25 @@ La diferencia hay que declararla: Gmail no da métricas de entrega, ni gestión 
 reputación de dominio propio, y tiene un límite diario bajo. Para una plataforma en producción lo
 correcto es un proveedor transaccional. Para demostrar que el adaptador real funciona y que el
 mensaje llega con su formato, es equivalente: el camino que recorre el correo es el mismo.
+
+## 2026-11-12 — Despliegue, visto desde un celular con datos móviles
+
+`06-despliegue-desde-datos-moviles.jpg`: la plataforma abierta en un iPhone, con sesión iniciada
+como Rector y el muro cargado con sus tres Kudos.
+
+**El dato que hace válida esta captura está en la barra de estado: `LTE`, no wifi.** Es el criterio
+de cierre de la Fase 4 del plan, y el más importante de todo: *«el docente abre la URL pública
+desde un celular con datos móviles, fuera de la red de casa»*. Una captura hecha desde el wifi de
+casa no demuestra que el servicio sea alcanzable desde internet.
+
+Lo que se ve además, y no es decorativo:
+
+- **La interfaz es usable con una mano** y sin desplazamiento horizontal, que es QA-MOV-01. Las
+  tarjetas ocupan el ancho, el texto no se corta y la navegación está abajo, al alcance del pulgar.
+- **Las tildes se ven correctas** —«Benítez», «Empatía», «Espíritu UCO»— en un tercer cliente
+  distinto: después del navegador de escritorio y de WhatsApp, también en Safari móvil.
+- **La pestaña de Auditoría aparece**, así que la verificación de la cadena se puede ejecutar desde
+  un celular igual que desde el escritorio.
+- El dominio es `…sslip.io`, que **no se compró**: resuelve la IP que lleva en el propio nombre, y
+  el proxy pidió y renueva el certificado solo. Sin HTTPS no habría service worker ni
+  notificaciones, así que no era una mejora opcional.
