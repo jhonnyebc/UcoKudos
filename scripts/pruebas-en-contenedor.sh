@@ -3,7 +3,7 @@
 # y es también el comando que conviene reutilizar desde el CI para que local y pipeline hagan
 # exactamente lo mismo.
 #
-# Uso: pruebas-en-contenedor.sh <unitarias|arquitectura|integracion>
+# Uso: pruebas-en-contenedor.sh <unitarias|arquitectura|integracion|e2e>
 #
 # Los argumentos de MSBuild van escritos aquí, en un shell, porque PowerShell parte en varios
 # argumentos las cadenas que llevan coma (-p:ThresholdType=line,branch llegaba troceado).
@@ -40,6 +40,14 @@ case "$GRUPO" in
         exec dotnet test tests/UcoKudos.IntegrationTests -c Release \
             --artifacts-path "$ARTEFACTOS" \
             --filter "Category=Integration"
+        ;;
+    e2e)
+        # Escenarios completos por HTTP contra la API levantada en memoria. Comparten proyecto con las
+        # de integracion porque reutilizan su fixture de PostgreSQL, y se separan por categoria para
+        # que el pipeline muestre cada nivel de la piramide como un paso propio.
+        exec dotnet test tests/UcoKudos.IntegrationTests -c Release \
+            --artifacts-path "$ARTEFACTOS" \
+            --filter "Category=E2E"
         ;;
     *)
         echo "Grupo desconocido: $GRUPO" >&2

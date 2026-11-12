@@ -63,6 +63,12 @@ jobs:
       - name: Pruebas de integración (Testcontainers)
         run: sh scripts/pruebas-en-contenedor.sh integracion
 
+      # Escenarios completos por HTTP: la API entera levantada en memoria, contra PostgreSQL real y
+      # con los tres canales simulados. Es el nivel que coge lo que ninguno de los de abajo ve: una
+      # ruta que no exige cuenta, un error de dominio que llega como 500, un contrato que cambia.
+      - name: Pruebas de extremo a extremo (API completa por HTTP)
+        run: sh scripts/pruebas-en-contenedor.sh e2e
+
       - name: Publicar reporte de cobertura
         if: always()
         uses: actions/upload-artifact@v4

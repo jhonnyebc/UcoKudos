@@ -6,7 +6,7 @@ El enunciado exige pruebas automatizadas en tres niveles como mínimo: unitarias
 
 ```mermaid
 flowchart TB
-    e2e["<b>Punta a punta</b> — pocas, lentas, frágiles<br/>El flujo de RF-07 en un navegador real<br/><i>Responden: ¿funciona de verdad?</i>"]
+    e2e["<b>Punta a punta</b> — pocas, lentas, frágiles<br/>La API entera por HTTP, contra PostgreSQL real:<br/>el flujo de RF-07 y la autorización de punta a punta<br/><i>Responden: ¿funciona de verdad?</i>"]
     int["<b>Integración</b> — algunas, medias<br/>Contra PostgreSQL y almacenamiento REALES<br/>en contenedores desechables<br/><i>Responden: ¿funciona contra la infraestructura?</i>"]
     arq["<b>Arquitectura</b> — pocas, rapidísimas<br/>Las 5 reglas de dependencia de ADR-0001<br/><i>Responden: ¿sigue siendo Clean Architecture?</i>"]
     uni["<b>Unitarias</b> — muchas, rapidísimas<br/>Invariantes, jerarquía de roles, reglas de moderación,<br/>cálculo de la ruta de réplicas, casos de uso con puertos simulados<br/><i>Responden: ¿la regla de negocio es correcta?</i>"]
@@ -156,3 +156,44 @@ Es la tabla que hay que poder mostrar: ningún escenario de calidad debería que
 | Punta a punta | 0 | Pendiente; llega con el flujo de RF-07 |
 
 Lo honesto es decir que hoy la pirámide tiene la base y el nivel de arquitectura, y que los dos niveles superiores llegan con la funcionalidad. El andamiaje de los cuatro ya está en pie, que es lo que evita que las pruebas se dejen para el final.
+
+---
+
+## Lo que el nivel de punta a punta es, y lo que no es
+
+**Es** un conjunto de escenarios que levantan la API completa en memoria con `WebApplicationFactory`,
+contra PostgreSQL real, y hacen **peticiones HTTP** a sus endpoints. Atraviesan todo el camino de
+una petición —enrutamiento, autenticación, autorización, serialización, manejo de errores— antes
+de llegar al dominio, y eso es lo que las distingue de las de integración, que invocan casos de uso
+con un contexto ya construido.
+
+Se sustituye **una sola pieza**: la validación del token. En lugar de comprobar una firma contra el
+proveedor de identidad, la identidad se lee de una cabecera, y el correo viaja en el mismo claim que
+pone el proveedor real. Todo lo demás es el sistema auténtico, incluida la resolución del rol contra
+la base en cada petición. Validar tokens reales obligaría a que el pipeline tuviera credenciales de
+un tercero, y una prueba que depende de la disponibilidad de otro falla por razones que no son suyas.
+
+**No es** una prueba dirigida desde un navegador. Un escenario de interfaz con Playwright sobre el
+sitio desplegado exigiría iniciar sesión en el proveedor de identidad, y eso significa credenciales
+reales en el pipeline. Queda declarado como ausente: la interfaz se cubre con pruebas de componentes
+y con la verificación manual que consta en `docs/evidencias`.
+
+### Escenarios
+
+| Escenario | Qué impide |
+|---|---|
+| Publicar un Kudo cumple los cinco pasos del enunciado | Que alguno de los cinco efectos deje de ocurrir, o que ocurra antes de tiempo: el correo y el WhatsApp **no** salen hasta que pasa el despachador |
+| Una petición sin identidad recibe 401 | Que una ruta quede abierta |
+| Una identidad sin cuenta, o con cuenta no activa, no puede leer | Que autenticarse se confunda con tener cuenta |
+| Reconocerse a uno mismo es un 400 que explica el motivo | Que el motivo se pierda por el camino |
+| La auditoría solo la consulta un rol de universidad | Que la autorización dependa de la pantalla |
+| El buscador encuentra sin tildes y no expone datos de contacto | Que una caja de búsqueda sea un volcado del directorio |
+
+### Hallazgo de este nivel
+
+La primera ejecución destapó un fallo de seguridad que ninguna prueba anterior había visto: **el
+muro, los Kudos recibidos, el detalle, las réplicas y las categorías solo exigían un token válido,
+no una cuenta**. Con inicio de sesión social, cualquier persona con una cuenta de Google podía leer
+todos los reconocimientos de la universidad, y una cuenta desactivada seguía leyendo, contra lo que
+el propio código de la API afirma. Se corrigió con un filtro de endpoint
+(`ExigirCuentaActiva`) y los escenarios quedan como regresión.

@@ -46,6 +46,7 @@ public static class EndpointsKudos
             int? tamano,
             IKudosPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.MuroAsync(cursor, tamano, ct)))
+        .ExigirCuentaActiva()
         .WithName("ConsultarMuro")
         .WithSummary("Muro de Kudos, paginado por cursor")
         .WithDescription(
@@ -58,6 +59,7 @@ public static class EndpointsKudos
             int? tamano,
             IKudosPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.RecibidosAsync(personaId, cursor, tamano, ct)))
+        .ExigirCuentaActiva()
         .WithName("KudosRecibidos")
         .WithSummary("Kudos que recibió una persona");
 
@@ -67,6 +69,7 @@ public static class EndpointsKudos
             int? tamano,
             IKudosPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.PorCategoriaAsync(categoriaId, cursor, tamano, ct)))
+        .ExigirCuentaActiva()
         .WithName("KudosPorCategoria")
         .WithSummary("Muro filtrado por categoría");
 
@@ -78,6 +81,7 @@ public static class EndpointsKudos
             var detalle = await puerto.DetalleAsync(kudoId, ct);
             return detalle is null ? Results.NotFound() : Results.Ok(detalle);
         })
+        .ExigirCuentaActiva()
         .WithName("DetalleKudo")
         .WithSummary("Detalle de un Kudo con sus adjuntos");
 

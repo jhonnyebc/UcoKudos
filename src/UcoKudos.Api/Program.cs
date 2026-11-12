@@ -120,3 +120,13 @@ api.MapearAuditoria();
 api.MapearAvisos();
 
 aplicacion.Run();
+
+/// <summary>
+/// Hace visible el punto de entrada a las pruebas de extremo a extremo.
+///
+/// Con sentencias de nivel superior el compilador genera <c>Program</c> como clase interna, y
+/// <c>WebApplicationFactory&lt;Program&gt;</c> necesita poder verla para levantar la API completa.
+/// Declararla parcial y pública no añade ningún miembro ni ninguna dependencia: la regla de
+/// arquitectura que vigila a la API no la ve, porque no contiene código.
+/// </summary>
+public partial class Program;

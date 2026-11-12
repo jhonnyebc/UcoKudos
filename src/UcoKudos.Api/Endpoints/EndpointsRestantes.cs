@@ -138,6 +138,7 @@ public static class EndpointsCategorias
         grupo.MapGet("/", async (
             ICategoriasPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.ActivasAsync(ct)))
+        .ExigirCuentaActiva()
         .WithName("CategoriasActivas")
         .WithSummary("Las categorías disponibles para publicar");
 
@@ -234,6 +235,7 @@ public static class EndpointsInteraccion
             Guid kudoId,
             IInteraccionPuertoEntrada puerto,
             CancellationToken ct) => Results.Ok(await puerto.HiloAsync(kudoId, ct)))
+        .ExigirCuentaActiva()
         .WithName("Hilo")
         .WithSummary("El hilo completo, ya en el orden en que se debe pintar")
         .WithDescription(

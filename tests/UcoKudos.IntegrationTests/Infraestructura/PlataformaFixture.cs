@@ -127,7 +127,7 @@ public static class Semillas
     }
 
     /// <summary>Las tres condiciones de RF-02, que es lo único que deja usar la plataforma.</summary>
-    private static Persona Activa(Persona persona)
+    public static Persona Activa(Persona persona)
     {
         persona.AprobarSolicitud();
         persona.VerificarCorreo();

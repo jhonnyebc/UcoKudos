@@ -26,7 +26,7 @@
 #>
 [CmdletBinding()]
 param(
-    [ValidateSet('todas', 'unitarias', 'arquitectura', 'integracion')]
+    [ValidateSet('todas', 'unitarias', 'arquitectura', 'integracion', 'e2e')]
     [string]$Proyecto = 'todas'
 )
 
@@ -63,7 +63,7 @@ foreach ($grupo in $aEjecutar) {
         '-v', "${volumenNuget}:/root/.nuget/packages"
     )
 
-    # El socket de Docker solo para las de integración: son las únicas que lo necesitan, y
+    # El socket de Docker solo para integración y extremo a extremo: son las únicas que lo necesitan, y
     # montarlo le da al contenedor control sobre el Docker del equipo.
     #
     # Los dos ajustes de entorno hacen falta porque las pruebas levantan contenedores desde DENTRO
@@ -76,7 +76,7 @@ foreach ($grupo in $aEjecutar) {
     #  - Los contenedores que las pruebas levantan son HERMANOS, no hijos: publican su puerto en el
     #    host de Windows, no en la red interna de Docker. Sin decirle cuál es el host, las pruebas
     #    buscan la base en la dirección equivocada y fallan con «conexión rechazada».
-    if ($grupo -eq 'integracion') {
+    if ($grupo -in @('integracion', 'e2e')) {
         $montajes += @(
             '-v', '/var/run/docker.sock:/var/run/docker.sock',
             '-e', 'TESTCONTAINERS_RYUK_DISABLED=true',
