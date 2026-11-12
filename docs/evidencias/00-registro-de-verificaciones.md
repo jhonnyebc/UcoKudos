@@ -357,3 +357,33 @@ no se recoge ni se fusiona. **El instrumento mide menos de lo que el proyecto pr
 Es una limitación metodológica y conviene decirla antes de que la pregunten: fusionar la cobertura
 de los tres proyectos de prueba daría un número representativo. Hoy no se hace, así que la cifra
 publicada subestima lo que realmente se ejercita.
+
+## 2026-11-11 — Observabilidad: la traza que cruza la frontera asíncrona (QA-OBS-01)
+
+`11-observabilidad-traza-frontera-asincrona.png`: una publicación completa en **una sola traza**,
+`6e54f7d`, con **17 tramos**, profundidad 3 y 2,27 s de duración total, contra el sistema
+desplegado.
+
+La traza se lee en dos bloques separados por un hueco:
+
+| Momento | Qué ocurre | Duración |
+|---|---|---|
+| 0 s | `POST /api/kudos/` y sus 8 consultas a PostgreSQL: el Kudo, la auditoría y el evento, en una transacción | **0,31 s** |
+| 0,31 s – 1,13 s | *Nada.* El usuario ya tiene su respuesta | — |
+| 1,13 s | `notificaciones.procesar`: el despachador recoge el evento de la bandeja | **0,91 s** |
+| dentro | `HTTP POST 200 graph.facebook.com:443` — el envío real del WhatsApp | **0,8 s** |
+
+**Ese hueco es la evidencia.** La petición terminó en 0,31 s y los avisos salieron casi un segundo
+después, pero las dos cosas comparten identificador de traza. Eso es lo que permite responder «qué
+le pasó a esta publicación concreta» siguiendo un solo hilo, que es literalmente el escenario
+QA-OBS-01.
+
+**Y la traza aporta un argumento que ningún documento puede dar: un número.** De los 0,91 s que
+tarda el despachador, **0,8 s son la llamada a Meta**. Si ese envío ocurriera dentro de la
+petición, publicar un Kudo pasaría de 0,31 s a más de un segundo, y además fallaría entero si Meta
+no respondiera. La bandeja transaccional de ADR-0005 no es una preferencia de diseño: aquí se ve
+medido lo que evita.
+
+Conviene señalar también lo que **no** aparece: ningún tramo de correo, porque en el servidor ese
+canal sigue en modo simulado y el simulado no sale a la red. La traza no solo muestra lo que pasa;
+también delata lo que falta.

@@ -20,7 +20,7 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 | 8 | WhatsApp | **Verificado en producción** el 2026-11-11 | `08-whatsapp.jpg` |
 | 9 | Notificaciones push | **Lista para capturar** | `09-push.png` |
 | 10 | Auditoría | **Conseguida** con los dos roles | `10-auditoria-*.png` |
-| 11 | Observabilidad | Falta la traza completa | `11-observabilidad.png` |
+| 11 | Observabilidad | **Conseguida** con la frontera asíncrona | `11-observabilidad-*.png` |
 | 12 | Pruebas | **Conseguida** | `12-pruebas-*.png` |
 
 ## Cómo se obtiene cada una
