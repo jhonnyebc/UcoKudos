@@ -79,3 +79,29 @@ el detalle de un 5xx —una traza de Npgsql con nombres de tablas— nunca llegu
 termina con código 1, el mismo que usa gitleaks para «encontré un secreto». Ahora comprueba que el
 demonio responde antes de escanear. Sigue bloqueando el envío, porque enviar sin escanear deja el
 repositorio sin esa verificación, pero ya no manda a buscar lo que no existe.
+
+## 2026-11-11 — Autorización de la auditoría, verificada con dos roles
+
+`10-auditoria-rol-sin-permiso.png`: la pantalla de auditoría ejecutada por un **Docente** contra el
+sistema desplegado. Respuesta: *«El rol Docente no consulta la auditoría.»*
+
+Consultar la auditoría está restringido a los roles de ámbito universidad —Administrador, Rector y
+Coordinador Académico—, que son los que rinden cuentas de la institución. La regla vive en el caso
+de uso, no en la pantalla.
+
+**Lo que esta captura demuestra, y que no es solo «salió un error»:**
+
+- La autorización se aplica en el **servidor**. El cliente no sabe qué roles pueden consultar la
+  auditoría, y no tiene por qué saberlo: pide, y el servidor decide.
+- El motivo llega **íntegro** al usuario. El mensaje es el que escribió el dominio, con el nombre
+  del rol dentro, no un texto genérico inventado por la interfaz.
+
+Ese segundo punto es consecuencia directa de una corrección del mismo día: hasta entonces el
+cliente descartaba el cuerpo de las respuestas fallidas, y esta misma pantalla habría dicho «no se
+pudo completar la operación», que habría parecido un fallo en lugar de una regla funcionando.
+
+### Por qué esta operación tiene pantalla desde hoy
+
+La API ofrecía la verificación desde el principio y estaba cubierta por pruebas, pero **en
+producción era inalcanzable**: no figuraba en ninguna interfaz y llamarla a mano exige un token que
+el cliente guarda solo en memoria. Una garantía que nadie puede comprobar no tranquiliza a nadie.
