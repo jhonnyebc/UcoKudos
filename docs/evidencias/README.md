@@ -10,8 +10,8 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 
 | # | Evidencia | Estado | Archivo |
 |---|---|---|---|
-| 1 | CI | **Lista para capturar** | `01-ci.png` |
-| 2 | CD | **Lista para capturar** | `02-cd.png` |
+| 1 | CI | **Conseguida** | `01-ci-*.png` |
+| 2 | CD | **Conseguida** | `02-cd-*.png` |
 | 3 | Sonar | **Lista para capturar** | `03-sonar.png` |
 | 4 | Trivy | **Lista para capturar** | `04-trivy.png` |
 | 5 | Publicación | **Lista para capturar** | `05-publicacion.png` |

@@ -174,3 +174,63 @@ que recorre la cadena: bastaría con comprobar el final.
 
 La fila se restaura después con `sh scripts/demostrar-auditoria.sh restaurar`, que la devuelve a su
 valor original y borra el respaldo. La demostración no deja residuos en la base.
+
+## 2026-11-11 — Integración continua
+
+`01-ci-ejecuciones.png`: el historial de ejecuciones del back-end, **46 en total**, todas en verde,
+con las dos ramas (`main` y `develop`) y el commit que disparó cada una.
+
+Lo que enseña esta vista y no enseñaría una sola ejecución: que el pipeline **se ejecuta en cada
+envío**, no una vez para la captura. Cada commit del día aparece dos veces, una por rama, y todas
+terminan en verde en menos de dos minutos.
+
+Conviene acompañarla del detalle de una ejecución, donde se ven los seis trabajos con su nombre:
+es lo que permite decir qué comprueba cada puerta.
+
+### Los seis trabajos, y el que solo corre en `main`
+
+`01-ci-trabajos-de-una-ejecucion.png`: el detalle de una ejecución, con los seis trabajos y su
+nombre:
+
+1. Backend (build, formato, pruebas y cobertura)
+2. Escaneo de secretos (ADR-0018)
+3. Escaneo de vulnerabilidades (Trivy)
+4. Análisis estático (Sonar)
+5. Imagen de contenedor (build y Trivy)
+6. Publicar la imagen en el registro
+
+El sexto **solo aparece en las ejecuciones de `main`**, por su condición de rama. Comparar esta
+captura con una de `develop`, que tiene cinco, enseña esa condición funcionando sin leer el
+workflow.
+
+## 2026-11-11 — Entrega continua
+
+`02-cd-publicacion-con-etiqueta.png`: la publicación real en el registro, con la etiqueta
+`0.1.0-116fd0c` y el destino `ghcr.io/jhonnyebc/ucokudos-api`.
+
+El nombre del paso lo dice entero: **«Publicar `<versión>-<sha>` (nunca más reciente)»**. No existe
+una etiqueta `latest`, y eso es deliberado: con `latest` nadie sabe qué está corriendo en el
+servidor, y dos despliegues del mismo nombre pueden ser cosas distintas. Con `0.1.0-116fd0c` se
+sabe exactamente qué commit está en producción.
+
+`02-cd-imagen-escaneada-es-la-publicada.png`: **la captura menos vistosa y una de las más
+importantes.** Muestra que el trabajo de publicación **descarga la imagen como artefacto** en lugar
+de reconstruirla, y verifica su huella:
+
+```
+SHA256 digest of downloaded artifact is dcff1356238f648faeac5ab31fa2a32f149cbb4e539b936196e95ff1a96d6506
+```
+
+Lo que garantiza es que **la imagen publicada es exactamente la que Trivy escaneó**. Si el trabajo
+de publicación la reconstruyera, sería una imagen distinta —otras capas base, otra fecha, otras
+dependencias resueltas— y el escaneo anterior no diría nada sobre ella. Sería una puerta de
+seguridad que se salta a sí misma sin que nadie lo note.
+
+### El despliegue no lo dispara el pipeline, y es a propósito
+
+La entrega llega hasta el registro. Poner esa versión en el servidor es una acción separada,
+`./scripts/desplegar.sh <etiqueta-api> <etiqueta-web>`, que ejecuta una persona.
+
+Que un `git push` toque producción sin que nadie lo decida es cómodo hasta el día que no lo es.
+Las dos etiquetas separadas permiten además desplegar solo lo que cambió: en el despliegue del
+cliente de esta noche, el contenedor de la API no se recreó.
