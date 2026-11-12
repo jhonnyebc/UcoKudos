@@ -8,6 +8,10 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 
 ## Estado
 
+**Las doce están conseguidas**, todas contra el sistema desplegado y no contra un entorno local.
+Cada una está explicada en [00-registro-de-verificaciones.md](00-registro-de-verificaciones.md),
+con el dato que la respalda y qué demuestra exactamente.
+
 | # | Evidencia | Estado | Archivo |
 |---|---|---|---|
 | 1 | CI | **Conseguida** | `01-ci-*.png` |
@@ -17,8 +21,8 @@ Las capturas se guardan aquí con el nombre que indica cada fila, para que el or
 | 5 | Publicación | **Conseguida** | `05-publicacion-*.png` |
 | 6 | Despliegue | **Conseguida** desde datos móviles | `06-despliegue-*.jpg` |
 | 7 | Correo | **Conseguida** con SMTP real | `07-correo-recibido.png` |
-| 8 | WhatsApp | **Verificado en producción** el 2026-11-11 | `08-whatsapp.jpg` |
-| 9 | Notificaciones push | **Lista para capturar** | `09-push.png` |
+| 8 | WhatsApp | **Conseguida** en el celular | `08-whatsapp.jpg` |
+| 9 | Notificaciones push | **Conseguida** en pantalla bloqueada | `09-push-*.jpg` |
 | 10 | Auditoría | **Conseguida** con los dos roles | `10-auditoria-*.png` |
 | 11 | Observabilidad | **Conseguida** con la frontera asíncrona | `11-observabilidad-*.png` |
 | 12 | Pruebas | **Conseguida** | `12-pruebas-*.png` |

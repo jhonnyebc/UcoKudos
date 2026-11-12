@@ -449,3 +449,34 @@ Lo que se ve además, y no es decorativo:
 - El dominio es `…sslip.io`, que **no se compró**: resuelve la IP que lleva en el propio nombre, y
   el proxy pidió y renueva el certificado solo. Sin HTTPS no habría service worker ni
   notificaciones, así que no era una mejora opcional.
+
+## 2026-11-12 — Notificaciones push, y los canales coincidiendo en la pantalla bloqueada
+
+`09-push-pantalla-bloqueada.jpg`: un iPhone **bloqueado**, con datos móviles, y **dos
+notificaciones del mismo Kudo llegando a la vez**:
+
+| Aviso | Canal | De dónde sale |
+|---|---|---|
+| «Hola, recibiste un reconocimiento de Marta Restrepo…» | WhatsApp | Plantilla `kudo_recibido` aprobada por Meta |
+| «Recibiste un Kudo — Marta Restrepo te reconoció…» | **Web Push** | La PWA instalada, con VAPID |
+
+**La de abajo es la que cierra la evidencia 9.** Lleva el icono de la aplicación instalada, no el
+de un navegador: es Web Push entregado por el service worker con la aplicación **cerrada** y el
+teléfono bloqueado, sobre HTTPS real. Sin certificado de una autoridad real no habría service
+worker ni notificaciones, así que esta captura también justifica por qué el HTTPS no era opcional.
+
+En iOS hay un requisito que conviene saber explicar: **el push solo funciona si la PWA está
+instalada en la pantalla de inicio**. Desde el navegador, aunque sea el mismo motor, Apple no lo
+permite. Y el permiso concedido en el navegador no se hereda a la aplicación instalada: para iOS
+son dos cosas distintas.
+
+**Que los dos avisos coincidan demuestra el reparto del Gateway**, que es ADR-0006: una sola
+publicación, varios canales independientes, cada uno con su propio adaptador y su propio
+resultado. Si uno fallara, los demás llegarían igual.
+
+Conviene señalar también lo que **no** se ve: ningún aviso en vivo por SSE, y es correcto. El
+Gateway entrega por el canal en vivo solo si hay una conexión abierta; como la aplicación estaba
+cerrada, eligió Web Push. No notifica dos veces lo mismo (ADR-0009).
+
+El «from Kudos» del título lo añade iOS con el nombre de la aplicación instalada: no sale del
+catálogo de mensajes.
