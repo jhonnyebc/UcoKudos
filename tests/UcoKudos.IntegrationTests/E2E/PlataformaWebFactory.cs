@@ -21,7 +21,7 @@ namespace UcoKudos.IntegrationTests.E2E;
 /// sistema *entrega* el mensaje a cada canal, no que Meta o un servidor SMTP respondan. Eso ya está
 /// verificado contra los proveedores reales y documentado en <c>docs/evidencias</c>.
 /// </summary>
-internal sealed class PlataformaWebFactory(string cadenaConexion) : WebApplicationFactory<Program>
+public sealed class PlataformaWebFactory(string cadenaConexion) : WebApplicationFactory<Program>
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {

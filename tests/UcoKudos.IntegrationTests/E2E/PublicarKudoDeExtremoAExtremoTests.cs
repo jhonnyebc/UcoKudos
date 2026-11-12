@@ -2,7 +2,6 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Hosting;
 using UcoKudos.Application.Identidad.Entrada.Dto;
 using UcoKudos.Application.Interaccion.Entrada.Puertos;
 using UcoKudos.Application.Kudos.Entrada.Dto;
@@ -30,73 +29,20 @@ namespace UcoKudos.IntegrationTests.E2E;
 /// </summary>
 [Collection(ColeccionBaseDeDatos.Nombre)]
 [Trait("Category", "E2E")]
-public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDatos) : IAsyncLifetime
+public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDatos)
+    : EscenarioDeExtremoAExtremo(baseDatos)
 {
-    private const string CorreoAutor = "docente@uco.edu.co";
-    private const string CorreoDestinatario = "estudiante@uco.edu.co";
-    private const string CorreoRector = "rector@uco.edu.co";
-
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
-
-    private PlataformaWebFactory _web = null!;
-    private DatosSembrados _datos = null!;
-
-    public async Task InitializeAsync()
-    {
-        await baseDatos.LimpiarAsync();
-
-        var ahora = DateTimeOffset.UtcNow;
-        await using var contexto = baseDatos.CrearContexto();
-        _datos = await Semillas.SembrarAsync(contexto, ahora);
-
-        // Un Rector, que es quien puede consultar la auditoría. Tiene ámbito de universidad, así
-        // que no lleva facultad ni programa.
-        var rector = Semillas.Activa(new Persona(CorreoRector, "+573009990000", "Marta Restrepo", ahora));
-        contexto.Personas.Add(rector);
-        contexto.AsignacionesRol.Add(new AsignacionRol(rector.Id, Rol.Rector, null, null, ahora));
-        await contexto.SaveChangesAsync();
-
-        _web = new PlataformaWebFactory(baseDatos.CadenaConexion);
-    }
-
-    public async Task DisposeAsync() => await _web.DisposeAsync();
-
-    /// <summary>Un cliente que hace las peticiones como esa persona. Sin argumento, anónimo.</summary>
-    private HttpClient Como(string? correo = null)
-    {
-        var cliente = _web.CreateClient();
-
-        if (correo is not null)
-        {
-            cliente.DefaultRequestHeaders.Add(EsquemaDePrueba.Cabecera, correo);
-        }
-
-        return cliente;
-    }
-
-    /// <summary>Vacía la bandeja, como lo haría el despachador en segundo plano.</summary>
-    private async Task DespacharAsync()
-    {
-        var proceso = _web.Services.GetServices<IHostedService>().OfType<ProcesoNotificaciones>().Single();
-
-        // Una vuelta atiende un evento: se repite hasta que no quede ninguno, que es lo que haría
-        // el temporizador real en unos segundos.
-        while (await proceso.ProcesarVueltaAsync(CancellationToken.None) > 0)
-        {
-        }
-    }
-
     [Fact]
     public async Task Publicar_un_Kudo_cumple_los_cinco_pasos_del_enunciado()
     {
-        using var ana = Como(CorreoAutor);
-        using var carlos = Como(CorreoDestinatario);
+        using var ana = Como(CorreoDocente);
+        using var carlos = Como(CorreoEstudiante);
         using var rector = Como(CorreoRector);
 
         // Paso 1: el Kudo se almacena, y se ve en el muro del destinatario.
         var respuesta = await ana.PostAsJsonAsync(
             "/api/kudos",
-            new PublicarKudoDto(_datos.DestinatarioId, _datos.CategoriaId, "Gracias por quedarte a terminar el informe."));
+            new PublicarKudoDto(Datos.DestinatarioId, Datos.CategoriaId, "Gracias por quedarte a terminar el informe."));
 
         Assert.True(respuesta.IsSuccessStatusCode, await respuesta.Content.ReadAsStringAsync());
         var publicado = await respuesta.Content.ReadFromJsonAsync<KudoPublicadoDto>(Json);
@@ -109,19 +55,19 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
 
         // El correo, el WhatsApp y el aviso no salen en la petición: salen después, desde la
         // bandeja. Hasta que el despachador pasa, no ha salido nada.
-        var correo = _web.Services.GetRequiredService<EnviadorCorreoSimulado>();
+        var correo = Web.Services.GetRequiredService<EnviadorCorreoSimulado>();
         Assert.Empty(correo.Enviados);
 
         await DespacharAsync();
 
         // Paso 2: correo al destinatario.
         var enviado = Assert.Single(correo.Enviados);
-        Assert.Equal(CorreoDestinatario, enviado.Destino);
+        Assert.Equal(CorreoEstudiante, enviado.Destino);
         Assert.Contains("Ana Gómez", enviado.Texto, StringComparison.Ordinal);
 
         // Paso 3: WhatsApp, siempre por plantilla aprobada.
         var whatsApp = Assert.Single(
-            _web.Services.GetRequiredService<WhatsAppSimuladoAdapter>().Enviados);
+            Web.Services.GetRequiredService<WhatsAppSimuladoAdapter>().Enviados);
         Assert.Equal("kudo_recibido", whatsApp.Plantilla);
 
         // Paso 4: el aviso queda en la bandeja del destinatario, que es lo que lo hace visible aunque
@@ -169,7 +115,7 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
     public async Task Una_cuenta_que_no_esta_activa_no_puede_leer_el_muro()
     {
         // Registrada pero sin aprobar ni verificar: RF-02 dice que no puede usar la plataforma.
-        await using (var contexto = baseDatos.CrearContexto())
+        await using (var contexto = BaseDatos.CrearContexto())
         {
             contexto.Personas.Add(new Persona("pendiente@uco.edu.co", "+573008887766", "Paula Pendiente", DateTimeOffset.UtcNow));
             await contexto.SaveChangesAsync();
@@ -190,11 +136,11 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
     [Fact]
     public async Task Reconocerse_a_uno_mismo_es_un_400_que_explica_el_motivo()
     {
-        using var ana = Como(CorreoAutor);
+        using var ana = Como(CorreoDocente);
 
         var respuesta = await ana.PostAsJsonAsync(
             "/api/kudos",
-            new PublicarKudoDto(_datos.AutorId, _datos.CategoriaId, "Me felicito."));
+            new PublicarKudoDto(Datos.AutorId, Datos.CategoriaId, "Me felicito."));
 
         Assert.Equal(HttpStatusCode.BadRequest, respuesta.StatusCode);
 
@@ -212,7 +158,7 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
     [Fact]
     public async Task La_auditoria_solo_la_consulta_un_rol_de_universidad()
     {
-        using var docente = Como(CorreoAutor);
+        using var docente = Como(CorreoDocente);
         using var rector = Como(CorreoRector);
 
         var rechazada = await docente.GetAsync("/api/auditoria/verificacion");
@@ -229,7 +175,7 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
     [Fact]
     public async Task El_buscador_encuentra_sin_tildes_y_no_expone_datos_de_contacto()
     {
-        using var ana = Como(CorreoAutor);
+        using var ana = Como(CorreoDocente);
 
         var respuesta = await ana.GetAsync("/api/identidad/personas?busqueda=mejia");
         var texto = await respuesta.Content.ReadAsStringAsync();
@@ -241,7 +187,7 @@ public sealed class PublicarKudoDeExtremoAExtremoTests(BaseDeDatosFixture baseDa
 
         // Lo que importa del buscador no es lo que devuelve sino lo que NO devuelve: una caja de
         // búsqueda abierta a cualquier usuario no puede ser un volcado del directorio.
-        Assert.DoesNotContain(CorreoDestinatario, texto, StringComparison.Ordinal);
+        Assert.DoesNotContain(CorreoEstudiante, texto, StringComparison.Ordinal);
         Assert.DoesNotContain("+57", texto, StringComparison.Ordinal);
     }
 }
