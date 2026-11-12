@@ -123,3 +123,54 @@ datos encadenado con el del anterior. Recalcularlos detecta las dos formas de ma
 registro: **editar** una fila, porque su hash deja de corresponder a sus datos, y **borrarla**,
 porque el siguiente deja de apuntar a un eslabón existente. Un registro sin encadenar solo detecta
 lo primero, y el segundo caso es el que más interesa a quien quiere tapar algo.
+
+### La tabla no se deja editar: el disparador rechaza el cambio
+
+`10-auditoria-disparador-rechaza.png`: un `UPDATE` sobre `audit.evento_auditoria`, lanzado desde
+`psql` con el usuario de la aplicación contra la base del servidor. Respuesta de PostgreSQL:
+
+```
+ERROR: La tabla de auditoria es de solo insercion: no se permite UPDATE (ADR-0013).
+CONTEXT: PL/pgSQL function audit.rechazar_cambio() line 1 at RAISE
+```
+
+**Este error es la evidencia, no un fallo.** La auditoría tiene dos defensas y conviene no
+confundirlas:
+
+| Defensa | Qué hace | Dónde vive |
+|---|---|---|
+| Disparador de solo inserción | **Impide** la manipulación | La base, ADR-0013 |
+| Cadena de hashes SHA-256 | La **detecta** | El dominio |
+
+El disparador actúa antes de cualquier actualización o borrado, así que **ni la propia aplicación
+puede alterar el registro**: no es una convención que dependa de que nadie escriba el `UPDATE`
+equivocado, es una garantía del motor. La cadena cubre el caso que el disparador no puede cubrir,
+que es alguien con permisos para desactivarlo.
+
+### La cadena detecta la alteración, y dice dónde
+
+`10-auditoria-cadena-alterada.png`: tras desactivar el disparador y modificar **una fila
+intermedia**, la misma operación responde:
+
+> *La cadena se rompe en el evento 4: su hash no corresponde a sus datos, así que el registro fue
+> modificado.*
+
+**Esta es la captura que vale, y conviene explicar por qué.** Un «Cadena íntegra» en verde solo
+demuestra que la operación se ejecuta: una función que devolviera siempre «todo bien» daría
+exactamente la misma pantalla. Lo que prueba que la verificación sirve es verla **fallar cuando
+debe**.
+
+Tres detalles que merecen señalarse:
+
+- **Señala el evento concreto**, el 4, no un «algo no cuadra». Eso permite acotar qué se tocó.
+- **Distingue el tipo de manipulación.** Dice que el hash no corresponde a *sus datos*, es decir
+  una **edición**. Un borrado daría un mensaje distinto, porque lo que falla entonces es el enlace
+  con el eslabón anterior.
+- **Revisó 4 eventos y no los 16** de la verificación anterior: se detiene en la primera rotura.
+  Seguir no aportaría nada, porque a partir de ahí toda la cadena hereda el desajuste.
+
+Se alteró una fila intermedia a propósito. Si se hubiera tocado la última, la detección no probaría
+que recorre la cadena: bastaría con comprobar el final.
+
+La fila se restaura después con `sh scripts/demostrar-auditoria.sh restaurar`, que la devuelve a su
+valor original y borra el respaldo. La demostración no deja residuos en la base.
