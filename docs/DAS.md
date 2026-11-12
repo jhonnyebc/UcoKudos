@@ -512,12 +512,15 @@ eso vale en los dos sentidos.
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
 | Funcionalidad | **Nivel 1 implementado.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado: persistencia, correo, WhatsApp, tiempo real y auditoría |
-| Canales | WhatsApp y tiempo real **reales** en producción. El correo sigue en modo simulado: falta contratar un proveedor transaccional |
+| Canales | **Los tres reales en producción** desde el 2026-11-12: correo por SMTP, WhatsApp por Meta Cloud API y tiempo real por SSE y Web Push. El correo sale por Gmail con contraseña de aplicación, no por un proveedor transaccional: ver la nota de abajo |
 
 **Lo que no está, y conviene decirlo antes de que se pregunte:**
 
-- El **correo real**. El adaptador funciona y está probado contra un contenedor de captura, pero en
-  el servidor no hay proveedor contratado.
+- El **proveedor transaccional de correo**. El canal real funciona desde el 2026-11-12, pero sale
+  por SMTP de Gmail con una contraseña de aplicación, no por un proveedor transaccional: se
+  intentó con Brevo y su verificación por SMS nunca llegó. La consecuencia hay que decirla: no hay
+  métricas de entrega, ni gestión de rebotes, ni reputación de dominio propio, y el límite diario
+  es bajo. El camino que recorre el correo es el mismo; lo que falta es la operación alrededor.
 - Del cliente web faltan el **detalle de un Kudo** y la **subida de adjuntos** (RF-08). La API sí
   tiene las operaciones de adjuntos; lo que no hay es pantalla.
 - No hay **pruebas de punta a punta** ni **prueba de carga**, así que los umbrales de QA-REND-01 y

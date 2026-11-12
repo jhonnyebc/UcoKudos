@@ -387,3 +387,43 @@ medido lo que evita.
 Conviene señalar también lo que **no** aparece: ningún tramo de correo, porque en el servidor ese
 canal sigue en modo simulado y el simulado no sale a la red. La traza no solo muestra lo que pasa;
 también delata lo que falta.
+
+## 2026-11-12 — Correo real, y los tres canales a la vez
+
+`07-correo-recibido.png`: el correo recibido en Gmail, **con su HTML pintado**: el título, el
+cuerpo con el autor y la categoría, y el pie institucional.
+
+Esa captura cierra un defecto encontrado días antes: el HTML viajaba etiquetado como `text/plain`
+porque se mezclaba `Body` con vistas alternativas, y **ningún cliente lo pintaba**. Se corrigió con
+dos vistas alternativas explícitas, la enriquecida al final. Hasta ahora solo se había comprobado
+contra un contenedor de captura; esta es la primera verificación contra un cliente de correo de
+verdad.
+
+### La publicación que disparó los tres canales reales
+
+Es la primera vez que los tres salen de verdad en la misma publicación:
+
+| Canal | Estado | Identificador externo |
+|---|---|---|
+| Correo | Enviado | `smtp:aceptado` — ya no `simulado:N` |
+| WhatsApp | Enviado | `wamid.HBgMNTcz…` — identificador de Meta |
+| TiempoReal | Enviado | `persistido` |
+
+El evento se encoló a las 21:40:32 y se procesó a las 21:40:35: **tres segundos** para los tres
+canales, con `intentos = 0`.
+
+El historial de la tabla cuenta la transición sola. Las filas de `Correo` anteriores dicen
+`simulado:1`, `simulado:2`, `simulado:3`; la última dice `smtp:aceptado`. **Mismo código, mismo
+puerto, otro adaptador detrás**, y el caso de uso que publica el Kudo no se enteró de nada. Ese
+contraste dentro de una sola tabla es el argumento de la arquitectura hexagonal mejor de lo que
+puede decirlo un diagrama.
+
+### El proveedor, dicho con precisión
+
+El envío sale por **SMTP de Gmail** con una contraseña de aplicación, no por un proveedor
+transaccional. Se intentó con Brevo y su verificación por SMS no llegó.
+
+La diferencia hay que declararla: Gmail no da métricas de entrega, ni gestión de rebotes, ni
+reputación de dominio propio, y tiene un límite diario bajo. Para una plataforma en producción lo
+correcto es un proveedor transaccional. Para demostrar que el adaptador real funciona y que el
+mensaje llega con su formato, es equivalente: el camino que recorre el correo es el mismo.
