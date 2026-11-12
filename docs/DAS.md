@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **96 unitarias, 6 de arquitectura y 46 de integración** contra PostgreSQL real, con una omitida y documentada; **40 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **107 unitarias, 6 de arquitectura y 57 de integración** contra PostgreSQL real, con una omitida y documentada; **47 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **18,34 % de líneas**, medida sobre toda la solución. El umbral sigue en 0, así que esa puerta todavía no bloquea. Ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -518,8 +518,8 @@ eso vale en los dos sentidos.
 
 - El **correo real**. El adaptador funciona y está probado contra un contenedor de captura, pero en
   el servidor no hay proveedor contratado.
-- Del cliente web faltan el **detalle de un Kudo**, la **subida de adjuntos** y el **buscador de
-  personas**: hoy el destinatario se indica pegando su identificador.
+- Del cliente web faltan el **detalle de un Kudo** y la **subida de adjuntos** (RF-08). La API sí
+  tiene las operaciones de adjuntos; lo que no hay es pantalla.
 - No hay **pruebas de punta a punta** ni **prueba de carga**, así que los umbrales de QA-REND-01 y
   QA-REND-02 están sin medir. Son objetivos de diseño, no resultados verificados.
 - No hay **guion de respaldo** ni restauración probada.
