@@ -61,7 +61,12 @@
 
 	# Cualquier otra cosa bajo /adjuntos es un 404 explícito, y no la página de la aplicación, que
 	# respondería 200 y haría pensar que el almacenamiento está abierto.
-	handle /adjuntos/* {
+	#
+	# Sin barra final a propósito (`/adjuntos*`, no `/adjuntos/*`): con ella, la ruta exacta
+	# `/adjuntos` no coincidía, caía en la aplicación y respondía 200. No filtraba nada —era la página
+	# de la aplicación, comprobado—, pero contradecía este comentario. Lo vio la verificación hecha
+	# contra producción tras el despliegue.
+	handle /adjuntos* {
 		respond "No encontrado" 404
 	}
 
