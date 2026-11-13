@@ -629,3 +629,20 @@ hecha (no se hizo); el patrón Valet Key y los diagramas de adjuntos, que descri
 prefirmadas ya abandonada; la regla 5 de arquitectura, que se decía verificada y no tiene prueba; el
 recuento de documentos de análisis; y la tabla de riesgos, cuyo estado era el de la
 primera semana. La pirámide de pruebas decía 3 unitarias y 0 de integración y de punta a punta.
+
+## 2026-11-13 — Gestión académica, verificada en producción
+
+Contra el sistema desplegado (api `0.1.0-06869b7`, web `0.1.0-9610f27`):
+
+1. **Programas de cada persona (RF-05):** el Rector consultó desde «Programas» al profesor y apareció
+   *Ingeniería de Sistemas · Facultad de Ingeniería · Principal*; una estudiante vio el suyo; el Rector,
+   cuyo rol es de toda la universidad, vio «No tiene programas registrados», que es lo correcto.
+2. **Estructura:** el Rector creó una facultad y un programa, aparecieron al instante en el desplegable
+   del registro, y al desactivar el programa desapareció del desplegable.
+3. **Vínculos:** el Rector vinculó a un estudiante con el programa nuevo (apareció como «Matrícula») y
+   después se lo quitó.
+
+**Por qué se hizo:** al revisar el enunciado se vio que pide poder conocer qué programas estudia un
+estudiante y en cuáles enseña un docente, y que el modelo tenía la tabla de vínculos sin que ninguna
+parte de la aplicación la usara. Al probarlo salió, además, que el registro aceptaba un programa de una
+facultad distinta de la indicada; ahora lo rechaza.
