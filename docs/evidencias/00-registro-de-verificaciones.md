@@ -570,4 +570,4 @@ Las pruebas tampoco lo veían, porque su fixture llamaba a `AsegurarContenedorPr
 código. Corregido: `GuardarAsync` crea el contenedor (privado, idempotente) si el almacenamiento
 responde `NoSuchBucket`, y hay una prueba que guarda contra un contenedor que no existe.
 
-**Pendiente de registrar:** la subida real desde el celular tras el despliegue.
+**Verificado en producción (2026-11-13, desde el celular):** se publicó un Kudo con una imagen, el adjunto se subió y se abrió desde el muro. Desplegado con api `0.1.0-702546c` y web `0.1.0-6cac0fb`.

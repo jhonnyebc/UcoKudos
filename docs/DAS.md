@@ -532,9 +532,8 @@ eso vale en los dos sentidos.
   (ADR-0004), pero significa que no hay alta de usuarios por autoservicio.
 - Del cliente web falta el **detalle de un Kudo** como pantalla propia.
 - Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
-  desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Lo que consta como
-  verificado es el servidor y las pruebas; la subida real desde un celular contra producción está
-  pendiente de registrarse en `docs/evidencias`.** El primer intento real falló con un 409 por un
+  desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Verificados en
+  producción desde un celular (2026-11-13): subida y apertura de una imagen.** El primer intento real falló con un 409 por un
   defecto de mapeo de EF Core y el segundo con un 403 del almacenamiento, ambos invisibles a las pruebas; el segundo se resolvió rediseñando la ruta (archivos por la API). Detalle en
   `docs/evidencias/00-registro-de-verificaciones.md`.
 - No hay **prueba de carga**, así que los umbrales de QA-REND-01 y QA-REND-02 están sin medir.
