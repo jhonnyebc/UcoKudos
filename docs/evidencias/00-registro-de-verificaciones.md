@@ -627,5 +627,5 @@ existe como puerta, y dos de las puertas no bloquean); la afirmación de que las
 punta corren en un navegador (son por HTTP); la prueba de carga presentada como una verificación
 hecha (no se hizo); el patrón Valet Key y los diagramas de adjuntos, que describían la versión de URL
 prefirmadas ya abandonada; la regla 5 de arquitectura, que se decía verificada y no tiene prueba; el
-recuento de ADR, diagramas y documentos de análisis; y la tabla de riesgos, cuyo estado era el de la
+recuento de documentos de análisis; y la tabla de riesgos, cuyo estado era el de la
 primera semana. La pirámide de pruebas decía 3 unitarias y 0 de integración y de punta a punta.

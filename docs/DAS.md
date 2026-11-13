@@ -506,7 +506,7 @@ eso vale en los dos sentidos.
 
 | Elemento | Estado |
 |---|---|
-| Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 18 diagramas Mermaid, manual de puesta a punto |
+| Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 21 diagramas Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
 | Pruebas | **199 unitarias, 6 de arquitectura, 59 de integración y 93 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **137 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **88,1 % sobre código nuevo** según Sonar (2026-11-13), por encima del 80 % exigido; la cifra global sigue siendo baja porque cuenta infraestructura y API, que solo prueban la integración y los escenarios de punta a punta. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
