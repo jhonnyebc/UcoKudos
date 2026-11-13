@@ -115,6 +115,7 @@ if (identidadConfigurada)
 api.MapearKudos();
 api.MapearIdentidad();
 api.MapearAcademico();
+api.MapearIndicadores();
 api.MapearCategorias();
 api.MapearInteraccion();
 api.MapearAuditoria();

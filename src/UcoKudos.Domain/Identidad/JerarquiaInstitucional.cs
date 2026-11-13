@@ -106,6 +106,12 @@ public static class JerarquiaInstitucional
     public static bool PuedeAdministrarCategorias(AmbitoUsuario usuario) => usuario.Rol.AdministraCategorias;
 
     /// <summary>
+    /// Ver los indicadores de gestión: desde el Coordinador de Programa hacia arriba. Docentes y
+    /// estudiantes no: son una herramienta para quien gestiona, no un dato de consulta.
+    /// </summary>
+    public static bool PuedeVerIndicadores(AmbitoUsuario usuario) => usuario.Rol.Nivel >= Rol.CoordinadorPrograma.Nivel;
+
+    /// <summary>
     /// Administrar facultades y programas. El enunciado no lo fija: se asigna a los mismos tres roles
     /// que administran las categorías, por ser decisiones de toda la universidad.
     /// </summary>

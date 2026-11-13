@@ -12,6 +12,7 @@ using UcoKudos.Application.Identidad.CasosUso;
 using UcoKudos.Application.Identidad.Entrada.Adaptadores;
 using UcoKudos.Application.Identidad.Entrada.Puertos;
 using UcoKudos.Application.Identidad.Salida.Puertos;
+using UcoKudos.Application.Indicadores;
 using UcoKudos.Application.Interaccion.CasosUso;
 using UcoKudos.Application.Interaccion.Entrada.Adaptadores;
 using UcoKudos.Application.Interaccion.Entrada.Puertos;
@@ -99,6 +100,7 @@ public static class ServiciosInfraestructura
     private static void AgregarLectura(IServiceCollection servicios)
     {
         servicios.AddScoped<IConsultasMuro, ConsultasMuroEf>();
+        servicios.AddScoped<IConsultasIndicadores, ConsultasIndicadoresEf>();
         servicios.AddScoped<IConsultasAvisos, ConsultasAvisosEf>();
         servicios.AddScoped<IConsultasPersonas, ConsultasPersonasEf>();
 
@@ -218,6 +220,7 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<BuscarPersonasCasoUso>();
         servicios.AddScoped<ConsultarProgramasDePersonaCasoUso>();
         servicios.AddScoped<GestionarVinculosCasoUso>();
+        servicios.AddScoped<IIndicadoresPuertoEntrada, ConsultarIndicadoresCasoUso>();
         servicios.AddScoped<AdministrarEstructuraCasoUso>();
         servicios.AddScoped<ResponderCasoUso>();
         servicios.AddScoped<CalificarCasoUso>();
