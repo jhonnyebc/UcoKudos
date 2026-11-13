@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **107 unitarias, 6 de arquitectura, 63 de integración y 23 de punta a punta** contra PostgreSQL real, con una omitida y documentada; **89 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **107 unitarias, 6 de arquitectura, 63 de integración y 32 de punta a punta** contra PostgreSQL real, con una omitida y documentada; **90 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -521,8 +521,22 @@ eso vale en los dos sentidos.
   intentó con Brevo y su verificación por SMS nunca llegó. La consecuencia hay que decirla: no hay
   métricas de entrega, ni gestión de rebotes, ni reputación de dominio propio, y el límite diario
   es bajo. El camino que recorre el correo es el mismo; lo que falta es la operación alrededor.
-- Del cliente web faltan el **detalle de un Kudo** y la **subida de adjuntos** (RF-08). La API sí
-  tiene las operaciones de adjuntos; lo que no hay es pantalla.
+- **El registro y la activación de cuentas no son operativos desde la aplicación** (RF-01, RF-02).
+  La API ofrece el registro, que deja la cuenta pendiente y envía un código de verificación, pero
+  **no hay ningún punto donde introducirlo**: nada llama a verificar el correo ni el celular, y la
+  aprobación de solicitudes (RF-03, nivel 2) tampoco tiene pantalla. En la práctica, una cuenta
+  nueva solo se crea con `scripts/crear-cuenta-docente.sh`, que la deja ya activa, y las de la
+  demostración se siembran. La verificación del celular por código está declarada como nivel 3.
+  Consecuencia que conviene saber explicar: **autenticarse en el proveedor no basta para entrar**;
+  quien no tenga persona en la plataforma recibe «No existe una cuenta», y es lo correcto
+  (ADR-0004), pero significa que no hay alta de usuarios por autoservicio.
+- Del cliente web falta el **detalle de un Kudo** como pantalla propia.
+- Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
+  desde el muro, con nueve escenarios de punta a punta del flujo completo. **Lo que consta como
+  verificado es el servidor y las pruebas; la subida real desde un celular contra producción está
+  pendiente de registrarse en `docs/evidencias`.** El primer intento real falló con un 409 por un
+  defecto de mapeo de EF Core que ninguna prueba había visto; está corregido y explicado en
+  `docs/evidencias/00-registro-de-verificaciones.md`.
 - No hay **prueba de carga**, así que los umbrales de QA-REND-01 y QA-REND-02 están sin medir.
   Son objetivos de diseño, no resultados verificados.
 - Las pruebas de **punta a punta son por HTTP, no dirigidas desde un navegador**. Un escenario de

@@ -515,3 +515,52 @@ una de las ausencias declaradas. El respaldo los cubriría igual.
 El riesgo residual **sigue siendo alto** y conviene no disfrazarlo: esto es recuperación, no
 disponibilidad. Si la máquina cae, la plataforma cae; lo que cambia es que ahora los datos se
 pueden recuperar en otra.
+
+## 2026-11-12 — Adjuntos: el primer uso real encontró un defecto que ninguna prueba veía
+
+Al subir un adjunto desde un celular contra producción, el Kudo se publicó pero el adjunto falló
+con *«Otra operación modificó este contenido al mismo tiempo. Vuelva a intentarlo»*, un 409 de
+concurrencia, sin que nadie estuviera tocando nada.
+
+**Causa.** El identificador del adjunto lo asigna el dominio, pero EF Core asume por omisión que una
+clave `Guid` la genera él al insertar. Cuando una entidad nueva aparece dentro de la colección de un
+agregado ya cargado y su clave ya viene rellena —lo que hace `Kudo.AgregarAdjunto`—, EF concluye que
+la fila existe y emite un `UPDATE` en lugar de un `INSERT`. Cero filas afectadas, y lo traduce como
+conflicto de concurrencia.
+
+**Por qué ninguna prueba lo vio.** Ninguna añadía un adjunto a un Kudo cargado de la base, que es el
+camino real. Las de integración cubrían el almacenamiento y los casos de uso por separado, con datos
+recién creados.
+
+**Cómo se trabajó, que es lo que conviene contar.**
+
+1. Se escribió primero el escenario de punta a punta que recorre el flujo completo. Se ejecutó
+   **antes de arreglar nada** y falló con el mismo 409 y el mismo texto que vio el usuario, en las
+   cuatro pruebas que llegan al primer paso.
+2. Se corrigió el mapeo (`ValueGeneratedNever`). Es un cambio del modelo y no de las tablas, pero EF
+   se niega a aplicar migraciones si el modelo difiere de la instantánea, así que se añadió una
+   migración **vacía a propósito**: `Up` y `Down` no hacen nada y la instantánea pierde una línea.
+3. Nueve escenarios quedan como regresión: pedir permiso, subir, confirmar, ver el detalle con el
+   tipo real detectado, descargar, la auditoría de carga y descarga, el máximo de cinco, solo el
+   autor, el contenido que no es del tipo declarado, y el adjunto sin confirmar.
+4. Desplegado el 2026-11-12: la migración se aplicó limpia («Esquema actualizado»).
+
+**La pantalla hizo su trabajo.** El Kudo sí se publicó y la pantalla lo dijo con claridad —«el Kudo
+se publicó y la persona ya fue avisada, pero un adjunto no se pudo subir»— en lugar de volver al
+formulario, donde reenviar lo habría publicado dos veces.
+
+### La ruta de adjuntos, verificada desde fuera contra producción
+
+Sin sesión, contra el sistema desplegado:
+
+| Petición | Resultado |
+|---|---|
+| GET anónimo a un objeto, sin firma | 404 |
+| Listado anónimo del contenedor | 404 |
+| `/adjuntos` sin barra final | 404 (daba 200 hasta corregirlo) |
+| Borrado, con o sin firma | 404 |
+| GET con firma falsa | 400, lo rechaza el almacenamiento |
+| Subida de 7 MiB con firma falsa | 413, límite en el borde |
+
+Se midió antes de publicar la ruta: el servidor de objetos atiende peticiones anónimas, y un GET sin
+firma al contenedor devolvía el listado completo. Por eso la ruta solo admite objetos con firma.
