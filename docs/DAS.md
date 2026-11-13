@@ -487,9 +487,9 @@ Publicar Kudo con sus cinco pasos, autenticación, los siete roles con exclusivi
 
 ### 16.3 Nivel 3 — Diseñado y documentado, no implementado
 
-**La gestión completa de la estructura académica salió del nivel 3 el 2026-11-13** y está implementada y con pantallas (ver 16.5). Lo que sigue en el nivel 3:
+**La gestión completa de la estructura académica y los reportes e indicadores salieron del nivel 3 el 2026-11-13** y están implementados y con pantallas (ver 16.5). Lo que sigue en el nivel 3:
 
-Reportes e indicadores, número propio de WhatsApp y la **entrega por WhatsApp** del código de verificación del celular. El código en sí **sí se implementó** (de un solo uso, con vigencia e intentos limitados), pero se entrega por correo; ver 16.5.
+Número propio de WhatsApp y la **entrega por WhatsApp** del código de verificación del celular. El código en sí **sí se implementó** (de un solo uso, con vigencia e intentos limitados), pero se entrega por correo; ver 16.5.
 
 ### 16.4 Reglas de gobierno
 
@@ -510,11 +510,11 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 21 diagramas Mermaid validados con el analizador oficial de Mermaid (v11.4.1, tras la última edición, 2026-11-13: 21 de 21 sin errores de sintaxis), manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **238 unitarias, 6 de arquitectura, 59 de integración y 122 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **153 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **249 unitarias, 6 de arquitectura, 59 de integración y 131 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **165 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **88,1 % sobre código nuevo** según Sonar (2026-11-13), por encima del 80 % exigido; la cifra global sigue siendo baja porque cuenta infraestructura y API, que solo prueban la integración y los escenarios de punta a punta. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
-| Funcionalidad | **Niveles 1 y 2 implementados y desplegados.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado (persistencia, correo, WhatsApp, tiempo real y auditoría), con adjuntos, categorías, registro y aprobación de cuentas, réplicas anidadas, calificaciones, y reportar y vetar. Del nivel 3 están el código de verificación (con la limitación declarada abajo) y la gestión completa de la estructura académica |
+| Funcionalidad | **Niveles 1 y 2 implementados y desplegados.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado (persistencia, correo, WhatsApp, tiempo real y auditoría), con adjuntos, categorías, registro y aprobación de cuentas, réplicas anidadas, calificaciones, y reportar y vetar. Del nivel 3 están el código de verificación (con la limitación declarada abajo), la gestión completa de la estructura académica y los reportes e indicadores |
 | Canales | **Los tres reales en producción** desde el 2026-11-12: correo por SMTP, WhatsApp por Meta Cloud API y tiempo real por SSE y Web Push. El correo sale por Gmail con contraseña de aplicación, no por un proveedor transaccional: ver la nota de abajo |
 
 **Lo que no está, y conviene decirlo antes de que se pregunte:**
@@ -551,7 +551,16 @@ eso vale en los dos sentidos.
   nuevos; y el registro ahora rechaza un programa desactivado y uno que no pertenece a la facultad
   indicada, que antes se aceptaba. El programa del rol sigue siendo el principal; los vínculos
   añaden otros, y un estudiante solo se matricula y un docente solo enseña.
-- Del cliente web falta el **detalle de un Kudo** como pantalla propia.
+- **Reportes e indicadores, implementados el 2026-11-13.** Kudos publicados, personas activas,
+  calificación promedio ponderada, reportes pendientes (solo para quien modera), Kudos por categoría
+  y por mes (serie de seis meses completa, con los meses vacíos en cero) y quiénes más reconocen y
+  son reconocidos. **Cada rol del Coordinador de Programa hacia arriba mide su ámbito** (la
+  universidad, su facultad o su programa) y un Kudo cuenta donde está su destinatario; docentes y
+  estudiantes no los ven; lo vetado no cuenta. Alcance honesto: son seis indicadores, no un sistema de
+  reportes configurable, no se exportan y no hay histórico más allá de los seis meses de la serie.
+- **Detalle de un Kudo, implementado el 2026-11-13.** Pantalla propia con el hilo ya abierto. Existía
+  un defecto de fondo: los avisos (correo, aplicación y push) apuntan a `/kudos/{id}`, y esa ruta
+  no existía en el cliente, así que abrir un aviso caía en «Esta página no existe».
 - Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
   desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Verificados en
   producción desde un celular (2026-11-13): subida y apertura de una imagen.** El primer intento real falló con un 409 por un
