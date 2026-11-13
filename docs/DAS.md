@@ -512,7 +512,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 21 diagramas Mermaid validados con el analizador oficial de Mermaid (v11.4.1, tras la última edición, 2026-11-13: 21 de 21 sin errores de sintaxis), manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **249 unitarias, 6 de arquitectura, 59 de integración y 131 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **165 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **276 unitarias, 6 de arquitectura, 59 de integración y 155 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **173 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **88,1 % sobre código nuevo** según Sonar (2026-11-13), por encima del 80 % exigido; la cifra global sigue siendo baja porque cuenta infraestructura y API, que solo prueban la integración y los escenarios de punta a punta. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -560,6 +560,15 @@ eso vale en los dos sentidos.
   universidad, su facultad o su programa) y un Kudo cuenta donde está su destinatario; docentes y
   estudiantes no los ven; lo vetado no cuenta. Alcance honesto: son seis indicadores, no un sistema de
   reportes configurable, no se exportan y no hay histórico más allá de los seis meses de la serie.
+- **Administración de usuarios, implementada el 2026-11-13.** Cada rol administra a las personas del
+  escalón que aprueba, dentro de su ámbito, con la misma cadena del enunciado (Coordinador de
+  Programa → docentes y estudiantes de sus programas; de Facultad → coordinadores de programa de su
+  facultad; Académico → coordinadores de facultad; Rector → Coordinador Académico; Administrador →
+  administradores y rectores). Puede **desactivar** una cuenta (con motivo; pierde el acceso en la
+  siguiente petición y no se borra nada), **reactivarla** y **cambiar su rol**, para lo cual debe
+  administrar el rol actual y poder aprobar el nuevo en el ámbito nuevo; el rol anterior se revoca y
+  queda en la historia. Nadie se administra a sí mismo y todo queda en la auditoría
+  (`usuario.desactivar`, `usuario.reactivar`, `usuario.cambiar_rol`).
 - **Detalle de un Kudo, implementado el 2026-11-13.** Pantalla propia con el hilo ya abierto. Existía
   un defecto de fondo: los avisos (correo, aplicación y push) apuntan a `/kudos/{id}`, y esa ruta
   no existía en el cliente, así que abrir un aviso caía en «Esta página no existe».
