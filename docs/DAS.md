@@ -482,7 +482,7 @@ Publicar Kudo con sus cinco pasos, autenticación, los siete roles con exclusivi
 
 ### 16.2 Nivel 2 — Con margen, en este orden
 
-Réplicas anidadas, calificaciones, y reportar y vetar contenido. El **flujo de aprobaciones** se entregó antes que los demás, el 2026-11-13, con sus pantallas.
+Réplicas anidadas, calificaciones, y reportar y vetar contenido. El **flujo de aprobaciones** y **reportar y vetar** se entregaron con sus pantallas el 2026-11-13; quedan réplicas y calificaciones solo en la API.
 
 ### 16.3 Nivel 3 — Diseñado y documentado, no implementado
 
@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **116 unitarias, 6 de arquitectura, 59 de integración y 63 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **102 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **116 unitarias, 6 de arquitectura, 59 de integración y 72 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **117 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -553,14 +553,16 @@ eso vale en los dos sentidos.
   las enviara: la instrumentación emitía al vacío y el panel mostraba cero trazas y cero registros
   sin que nada fallara. Se detectó al ir a recoger la evidencia, no antes, porque **ningún síntoma
   apunta a una telemetría que no se exporta**: la aplicación funciona igual de bien.
-- Del **nivel 2**, el flujo de aprobaciones tiene pantallas y está verificado en producción. Lo
-  demás —réplicas, calificaciones, reportar y vetar— existe en la API pero **no tiene pantallas**;
-  por la regla 4 de gobierno, eso cuenta como no entregado. Reportar y vetar sí tienen prueba de
-  punta a punta (13 escenarios, 2026-11-13): solo el Rector y el Coordinador Académico vetan, el
-  muro, el hilo y el detalle dejan de servir lo vetado, la cascada oculta al Kudo y su hilo o a una
-  réplica y sus descendientes sin tocar a las hermanas, el autor recibe el motivo y queda auditado.
-  Esa prueba encontró un defecto: el resultado de vetar un Kudo con hilo decía «1 contenido
-  afectado» en vez del total, porque contaba las réplicas después de marcarlas.
+- Del **nivel 2**, tienen pantallas y están verificados: el flujo de aprobaciones (2026-11-13, en
+  producción) y **reportar y vetar** (botones en la tarjeta, bandeja de reportes para el Rector y el
+  Coordinador Académico, descartar reportes). Siguen **sin pantallas**: las réplicas anidadas y las
+  calificaciones, que existen en la API; por la regla 4 de gobierno, eso cuenta como no entregado.
+  Reportar y vetar tienen 20 escenarios de punta a punta: solo el Rector y el Coordinador
+  Académico vetan, el muro, el hilo y el detalle dejan de servir lo vetado, la cascada oculta al
+  Kudo y su hilo o a una réplica y sus descendientes sin tocar a las hermanas, el autor recibe el
+  motivo, vetar resuelve los reportes pendientes y todo queda auditado. Esas pruebas encontraron un
+  defecto: el resultado de vetar un Kudo con hilo decía «1 contenido afectado» en vez del total,
+  porque contaba las réplicas después de marcarlas.
 
 **Sobre la cobertura, que necesita tres cifras y no una.** Una versión anterior de esta sección
 decía que la cobertura era del 18,34 % y que la puerta no bloqueaba. Las dos cosas eran ciertas por
