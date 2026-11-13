@@ -19,6 +19,7 @@ public static class AccionesAuditoria
     public const string ReplicaPublicar = "replica.publicar";
     public const string ContenidoCalificar = "contenido.calificar";
     public const string ContenidoReportar = "contenido.reportar";
+    public const string ReporteDescartar = "reporte.descartar";
     public const string ContenidoVetar = "contenido.vetar";
     public const string CategoriaCrear = "categoria.crear";
     public const string CategoriaActualizar = "categoria.actualizar";

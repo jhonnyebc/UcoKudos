@@ -242,6 +242,128 @@ public sealed class ModeracionDeExtremoAExtremoTests(BaseDeDatosFixture baseDato
         Assert.True((int)segundo.StatusCode < 500, "Un segundo veto no debe terminar en un error del servidor.");
     }
 
+    private static async Task ReportarAsync(HttpClient cliente, string tipo, Guid id, string motivo) =>
+        Assert.Equal(
+            HttpStatusCode.Accepted,
+            (await cliente.PostAsJsonAsync("/api/moderacion/reportes", new ReportarDto(tipo, id, motivo))).StatusCode);
+
+    private static async Task<List<ReportePendienteDto>> PendientesAsync(HttpClient cliente) =>
+        (await cliente.GetFromJsonAsync<List<ReportePendienteDto>>("/api/moderacion/reportes", Json))!;
+
+    [Fact]
+    public async Task Quien_modera_ve_los_reportes_pendientes_con_el_contenido_reportado()
+    {
+        var kudo = await PublicarKudoAsync("Un mensaje que alguien va a reportar.");
+
+        using var estudiante = Como(CorreoEstudiante);
+        await ReportarAsync(estudiante, "Kudo", kudo, "Me parece ofensivo.");
+
+        using var rector = Como(CorreoRector);
+        var reporte = Assert.Single(await PendientesAsync(rector));
+
+        Assert.Equal(kudo, reporte.ContenidoId);
+        Assert.Equal("Kudo", reporte.TipoContenido);
+        Assert.Equal("Me parece ofensivo.", reporte.Motivo);
+        Assert.Equal("Un mensaje que alguien va a reportar.", reporte.Contenido);
+        Assert.Equal("Carlos Mejía", reporte.ReportadoPor);
+        Assert.Equal("Ana Gómez", reporte.AutorDelContenido);
+    }
+
+    /// <summary>Los reportes son para quien decide: el resto de roles no los ve, y el intento queda auditado.</summary>
+    [Theory]
+    [InlineData(CorreoAdministrador)]
+    [InlineData(CorreoCoordinadorPrograma)]
+    [InlineData(CorreoDocente)]
+    [InlineData(CorreoEstudiante)]
+    public async Task Los_roles_que_no_moderan_no_ven_los_reportes(string correo)
+    {
+        using var cliente = Como(correo);
+
+        Assert.Equal(HttpStatusCode.Forbidden, (await cliente.GetAsync("/api/moderacion/reportes")).StatusCode);
+
+        await using var contexto = BaseDatos.CrearContexto();
+        Assert.Contains(AccionesAuditoria.AccesoRechazado,
+            await contexto.EventosAuditoria.Select(e => e.Accion).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Vetar_un_contenido_resuelve_sus_reportes_pendientes()
+    {
+        var kudo = await PublicarKudoAsync();
+
+        using var estudiante = Como(CorreoEstudiante);
+        await ReportarAsync(estudiante, "Kudo", kudo, "Ofensivo.");
+
+        using var coordinador = Como(CorreoCoordinadorAcademico);
+        Assert.Single(await PendientesAsync(coordinador));
+
+        Assert.Equal(HttpStatusCode.OK, (await VetarAsync(coordinador, "Kudo", kudo)).StatusCode);
+
+        // Ya se decidió: no sigue pendiente, y quedó aceptado en la base.
+        Assert.Empty(await PendientesAsync(coordinador));
+
+        await using var contexto = BaseDatos.CrearContexto();
+        Assert.Equal(UcoKudos.Domain.Interaccion.EstadoReporte.Aceptado,
+            (await contexto.Reportes.SingleAsync()).Estado);
+    }
+
+    [Fact]
+    public async Task Descartar_un_reporte_lo_resuelve_sin_vetar_el_contenido()
+    {
+        var kudo = await PublicarKudoAsync();
+
+        using var estudiante = Como(CorreoEstudiante);
+        await ReportarAsync(estudiante, "Kudo", kudo, "Creo que no corresponde.");
+
+        using var rector = Como(CorreoRector);
+        var reporte = Assert.Single(await PendientesAsync(rector));
+
+        var descarte = await rector.PostAsync($"/api/moderacion/reportes/{reporte.Id}/descartar", null);
+        Assert.Equal(HttpStatusCode.NoContent, descarte.StatusCode);
+
+        Assert.Empty(await PendientesAsync(rector));
+        Assert.Contains(kudo, await MuroAsync());
+
+        await using var contexto = BaseDatos.CrearContexto();
+        Assert.Equal(UcoKudos.Domain.Interaccion.EstadoReporte.Descartado,
+            (await contexto.Reportes.SingleAsync()).Estado);
+        Assert.Contains(AccionesAuditoria.ReporteDescartar,
+            await contexto.EventosAuditoria.Select(e => e.Accion).ToListAsync());
+    }
+
+    [Fact]
+    public async Task Quien_no_modera_no_puede_descartar_un_reporte()
+    {
+        var kudo = await PublicarKudoAsync();
+
+        using var estudiante = Como(CorreoEstudiante);
+        await ReportarAsync(estudiante, "Kudo", kudo, "Ofensivo.");
+
+        await using var contexto = BaseDatos.CrearContexto();
+        var reporteId = (await contexto.Reportes.SingleAsync()).Id;
+
+        var intento = await estudiante.PostAsync($"/api/moderacion/reportes/{reporteId}/descartar", null);
+
+        Assert.Equal(HttpStatusCode.Forbidden, intento.StatusCode);
+    }
+
+    [Fact]
+    public async Task Un_reporte_de_una_replica_ya_oculta_por_cascada_no_ocupa_la_bandeja()
+    {
+        var (kudo, _, r2, _) = await KudoConHiloAsync();
+
+        using var docente = Como(CorreoDocente);
+        await ReportarAsync(docente, "Replica", r2, "Fuera de lugar.");
+
+        using var rector = Como(CorreoRector);
+        Assert.Single(await PendientesAsync(rector));
+
+        // Al vetar el Kudo entero, la réplica queda oculta y su reporte ya no necesita decisión.
+        await VetarAsync(rector, "Kudo", kudo);
+
+        Assert.Empty(await PendientesAsync(rector));
+    }
+
     private static async Task<string> DetalleAsync(HttpResponseMessage respuesta)
     {
         using var cuerpo = JsonDocument.Parse(await respuesta.Content.ReadAsStringAsync());

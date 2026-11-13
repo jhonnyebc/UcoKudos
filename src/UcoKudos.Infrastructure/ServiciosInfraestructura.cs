@@ -217,6 +217,7 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<CalificarCasoUso>();
         servicios.AddScoped<ReportarContenidoCasoUso>();
         servicios.AddScoped<VetarContenidoCasoUso>();
+        servicios.AddScoped<GestionarReportesCasoUso>();
         servicios.AddScoped<GatewayNotificaciones>();
 
         // Puertos de entrada: es lo único que la API puede pedir (ADR-0001, regla 4).

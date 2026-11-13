@@ -33,5 +33,19 @@ public sealed record ReportarDto(string TipoContenido, Guid ContenidoId, string 
 /// <summary>Datos para vetar. Solo Rector y Coordinador Académico (RF-12).</summary>
 public sealed record VetarDto(string TipoContenido, Guid ContenidoId, string Motivo);
 
+/// <summary>
+/// Un reporte pendiente tal como lo ve quien modera: el motivo, quién lo presentó y **el contenido
+/// reportado**, para decidir sin tener que buscarlo.
+/// </summary>
+public sealed record ReportePendienteDto(
+    Guid Id,
+    string TipoContenido,
+    Guid ContenidoId,
+    string Motivo,
+    string ReportadoPor,
+    string AutorDelContenido,
+    string Contenido,
+    DateTimeOffset PresentadoEn);
+
 /// <summary>Resultado de un veto: cuántos contenidos quedaron ocultos, contando los descendientes.</summary>
 public sealed record ResultadoVetoDto(int ContenidosAfectados, bool EnCascada);

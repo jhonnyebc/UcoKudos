@@ -237,6 +237,15 @@ public sealed class ModeracionRepositorio(UcoKudosDbContext contexto) : IModerac
             .Where(r => r.Estado == EstadoReporte.Pendiente)
             .OrderBy(r => r.PresentadoEn)
             .ToListAsync(ct);
+
+    public async Task<IReadOnlyList<Reporte>> ReportesPendientesDeAsync(
+        TipoContenido tipo, Guid contenidoId, CancellationToken ct) =>
+        await contexto.Reportes
+            .Where(r => r.Estado == EstadoReporte.Pendiente && r.TipoContenido == tipo && r.ContenidoId == contenidoId)
+            .ToListAsync(ct);
+
+    public Task<Reporte?> ReportePorIdAsync(Guid id, CancellationToken ct) =>
+        contexto.Reportes.FirstOrDefaultAsync(r => r.Id == id, ct);
 }
 
 /// <summary>

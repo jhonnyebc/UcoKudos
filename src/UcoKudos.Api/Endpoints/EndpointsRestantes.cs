@@ -305,6 +305,35 @@ public static class EndpointsInteraccion
         .WithSummary("Reporta contenido inapropiado")
         .WithDescription("Lo puede hacer cualquier usuario (RF-11).");
 
+        moderacion.MapGet("/reportes", async (
+            IModeracionPuertoEntrada puerto,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            return Results.Ok(await puerto.ReportesPendientesAsync(contexto, ct));
+        })
+        .WithName("ReportesPendientes")
+        .WithSummary("Los reportes que esperan decisión, con el contenido reportado")
+        .WithDescription("Solo Rector y Coordinador Académico: quien puede vetar es quien decide sobre los reportes.");
+
+        moderacion.MapPost("/reportes/{reporteId:guid}/descartar", async (
+            Guid reporteId,
+            IModeracionPuertoEntrada puerto,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            await puerto.DescartarReporteAsync(contexto, reporteId, ct);
+
+            return Results.NoContent();
+        })
+        .WithName("DescartarReporte")
+        .WithSummary("Descarta un reporte sin vetar el contenido")
+        .WithDescription("Solo Rector y Coordinador Académico.");
+
         moderacion.MapPost("/vetos", async (
             VetarDto datos,
             IModeracionPuertoEntrada puerto,

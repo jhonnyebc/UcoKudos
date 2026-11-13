@@ -22,6 +22,12 @@ public interface IModeracionPuertoEntrada
 
     /// <summary>Vetar. Solo Rector y Coordinador Académico (RF-12).</summary>
     Task<ResultadoVetoDto> VetarAsync(ContextoPeticion contexto, VetarDto datos, CancellationToken ct);
+
+    /// <summary>Los reportes que esperan decisión. Solo quien puede vetar los ve.</summary>
+    Task<IReadOnlyList<ReportePendienteDto>> ReportesPendientesAsync(ContextoPeticion contexto, CancellationToken ct);
+
+    /// <summary>Descarta un reporte sin vetar. Solo quien puede vetar.</summary>
+    Task DescartarReporteAsync(ContextoPeticion contexto, Guid reporteId, CancellationToken ct);
 }
 
 /// <summary>

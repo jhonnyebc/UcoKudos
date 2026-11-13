@@ -46,4 +46,9 @@ public interface IModeracionRepositorio
     void AgregarVeto(Veto veto);
 
     Task<IReadOnlyList<Reporte>> ReportesPendientesAsync(CancellationToken ct);
+
+    /// <summary>Los reportes pendientes sobre un contenido concreto: se resuelven al vetarlo.</summary>
+    Task<IReadOnlyList<Reporte>> ReportesPendientesDeAsync(TipoContenido tipo, Guid contenidoId, CancellationToken ct);
+
+    Task<Reporte?> ReportePorIdAsync(Guid id, CancellationToken ct);
 }

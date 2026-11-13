@@ -24,11 +24,18 @@ public sealed class InteraccionAdaptadorEntrada(
 /// <summary>Adaptador de entrada de la moderación.</summary>
 public sealed class ModeracionAdaptadorEntrada(
     ReportarContenidoCasoUso reportar,
-    VetarContenidoCasoUso vetar) : IModeracionPuertoEntrada
+    VetarContenidoCasoUso vetar,
+    GestionarReportesCasoUso gestionar) : IModeracionPuertoEntrada
 {
     public Task ReportarAsync(ContextoPeticion contexto, ReportarDto datos, CancellationToken ct) =>
         reportar.EjecutarAsync(contexto, datos, ct);
 
     public Task<ResultadoVetoDto> VetarAsync(ContextoPeticion contexto, VetarDto datos, CancellationToken ct) =>
         vetar.EjecutarAsync(contexto, datos, ct);
+
+    public Task<IReadOnlyList<ReportePendienteDto>> ReportesPendientesAsync(ContextoPeticion contexto, CancellationToken ct) =>
+        gestionar.PendientesAsync(contexto, ct);
+
+    public Task DescartarReporteAsync(ContextoPeticion contexto, Guid reporteId, CancellationToken ct) =>
+        gestionar.DescartarAsync(contexto, reporteId, ct);
 }

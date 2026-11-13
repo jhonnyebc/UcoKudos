@@ -6,6 +6,7 @@ using UcoKudos.Application.Interaccion.Entrada.Dto;
 using UcoKudos.Application.Notificaciones.CasosUso;
 using UcoKudos.Domain.Auditoria;
 using UcoKudos.Domain.Identidad;
+using UcoKudos.Domain.Identidad.Repositorios;
 using UcoKudos.Domain.Interaccion;
 using UcoKudos.Domain.Interaccion.Repositorios;
 using UcoKudos.Domain.Kudos.Repositorios;
@@ -51,6 +52,98 @@ public sealed class ReportarContenidoCasoUso(
 }
 
 /// <summary>
+/// La bandeja de quien modera: ver los reportes pendientes y descartar los que no proceden.
+///
+/// Solo la ven los roles que pueden vetar (Rector y Coordinador Académico). Un reporte es una queja
+/// de alguien, no una decisión: el contenido sigue visible hasta que alguien con autoridad lo veta.
+/// </summary>
+public sealed class GestionarReportesCasoUso(
+    IKudoRepositorio kudos,
+    IReplicaRepositorio replicas,
+    IModeracionRepositorio moderacion,
+    IPersonaRepositorio personas,
+    IUnidadTrabajo unidadTrabajo,
+    ServicioAuditoria auditoria,
+    TimeProvider reloj)
+{
+    public async Task<IReadOnlyList<ReportePendienteDto>> PendientesAsync(ContextoPeticion contexto, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contexto);
+        await ExigirModeradorAsync(contexto, "ver los reportes", Guid.Empty, ct);
+
+        var resultado = new List<ReportePendienteDto>();
+
+        foreach (var reporte in await moderacion.ReportesPendientesAsync(ct))
+        {
+            var (contenido, autorId, vetado) = reporte.TipoContenido == TipoContenido.Kudo
+                ? await DatosDelKudoAsync(reporte.ContenidoId, ct)
+                : await DatosDeLaReplicaAsync(reporte.ContenidoId, ct);
+
+            // Lo que ya está vetado no necesita decisión, aunque conserve un reporte pendiente: por
+            // ejemplo, una réplica que se ocultó en cascada al vetar el Kudo.
+            if (contenido is null || vetado)
+                continue;
+
+            var reportante = await personas.PorIdAsync(reporte.PersonaId, ct);
+            var autor = await personas.PorIdAsync(autorId, ct);
+
+            resultado.Add(new ReportePendienteDto(
+                reporte.Id,
+                reporte.TipoContenido.ToString(),
+                reporte.ContenidoId,
+                reporte.Motivo,
+                reportante?.NombreCompleto ?? "Persona desconocida",
+                autor?.NombreCompleto ?? "Persona desconocida",
+                contenido,
+                reporte.PresentadoEn));
+        }
+
+        return resultado;
+    }
+
+    public async Task DescartarAsync(ContextoPeticion contexto, Guid reporteId, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contexto);
+        await ExigirModeradorAsync(contexto, "descartar un reporte", reporteId, ct);
+
+        var reporte = await moderacion.ReportePorIdAsync(reporteId, ct)
+                      ?? throw new ExcepcionDominio("El reporte indicado no existe.");
+
+        reporte.Resolver(seVeto: false);
+
+        await auditoria.RegistrarAsync(
+            contexto, AccionesAuditoria.ReporteDescartar, nameof(Reporte), reporte.Id,
+            new { tipo = reporte.TipoContenido.ToString(), contenidoId = reporte.ContenidoId },
+            reloj.GetUtcNow(), ct);
+
+        await unidadTrabajo.ConfirmarAsync(ct);
+    }
+
+    private async Task<(string? Contenido, Guid AutorId, bool Vetado)> DatosDelKudoAsync(Guid id, CancellationToken ct)
+    {
+        var kudo = await kudos.PorIdAsync(id, ct);
+        return kudo is null ? (null, Guid.Empty, false) : (kudo.Contenido, kudo.AutorId, kudo.Vetado);
+    }
+
+    private async Task<(string? Contenido, Guid AutorId, bool Vetado)> DatosDeLaReplicaAsync(Guid id, CancellationToken ct)
+    {
+        var replica = await replicas.PorIdAsync(id, ct);
+        return replica is null ? (null, Guid.Empty, false) : (replica.Contenido, replica.AutorId, replica.Vetado);
+    }
+
+    private async Task ExigirModeradorAsync(ContextoPeticion contexto, string queIntento, Guid entidadId, CancellationToken ct)
+    {
+        if (JerarquiaInstitucional.PuedeVetar(contexto.Ambito))
+            return;
+
+        await auditoria.RegistrarAccesoRechazadoAsync(contexto, queIntento, entidadId, reloj.GetUtcNow(), ct);
+        await unidadTrabajo.ConfirmarAsync(ct);
+
+        throw new ExcepcionAutorizacion("El rol " + contexto.Rol.Nombre + " no modera contenido.");
+    }
+}
+
+/// <summary>
 /// Vetar contenido (RF-12). Solo Rector y Coordinador Académico: el Administrador del Sistema **no**,
 /// aunque sea el rol más alto, porque moderar es una atribución académica y no técnica.
 ///
@@ -83,6 +176,11 @@ public sealed class VetarContenidoCasoUso(
             : await VetarReplicaAsync(datos.ContenidoId, ct);
 
         moderacion.AgregarVeto(new Veto(contexto.PersonaId, tipo, datos.ContenidoId, datos.Motivo, afectados, ahora));
+
+        // Los reportes pendientes sobre este contenido quedan resueltos, y aceptados: se vetó. Sin
+        // esto la bandeja de quien modera seguiría mostrando como pendiente algo que ya se decidió.
+        foreach (var reporte in await moderacion.ReportesPendientesDeAsync(tipo, datos.ContenidoId, ct))
+            reporte.Resolver(seVeto: true);
 
         await auditoria.RegistrarAsync(
             contexto, AccionesAuditoria.ContenidoVetar, tipo.ToString(), datos.ContenidoId,
