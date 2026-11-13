@@ -482,7 +482,7 @@ Publicar Kudo con sus cinco pasos, autenticación, los siete roles con exclusivi
 
 ### 16.2 Nivel 2 — Con margen, en este orden
 
-Réplicas anidadas, calificaciones, flujo de aprobaciones, y reportar y vetar contenido.
+Réplicas anidadas, calificaciones, y reportar y vetar contenido. El **flujo de aprobaciones** se entregó antes que los demás, el 2026-11-13, con sus pantallas.
 
 ### 16.3 Nivel 3 — Diseñado y documentado, no implementado
 
@@ -521,15 +521,19 @@ eso vale en los dos sentidos.
   intentó con Brevo y su verificación por SMS nunca llegó. La consecuencia hay que decirla: no hay
   métricas de entrega, ni gestión de rebotes, ni reputación de dominio propio, y el límite diario
   es bajo. El camino que recorre el correo es el mismo; lo que falta es la operación alrededor.
-- **El registro y la activación de cuentas no son operativos desde la aplicación** (RF-01, RF-02).
-  La API ofrece el registro, que deja la cuenta pendiente y envía un código de verificación, pero
-  **no hay ningún punto donde introducirlo**: nada llama a verificar el correo ni el celular, y la
-  aprobación de solicitudes (RF-03, nivel 2) tampoco tiene pantalla. En la práctica, una cuenta
-  nueva solo se crea con `scripts/crear-cuenta-docente.sh`, que la deja ya activa, y las de la
-  demostración se siembran. La verificación del celular por código está declarada como nivel 3.
-  Consecuencia que conviene saber explicar: **autenticarse en el proveedor no basta para entrar**;
-  quien no tenga persona en la plataforma recibe «No existe una cuenta», y es lo correcto
-  (ADR-0004), pero significa que no hay alta de usuarios por autoservicio.
+- **Registro, verificación y aprobación de cuentas (RF-01 a RF-03):** implementados de punta a punta
+  el 2026-11-13 (pantallas de registro, de verificación y de solicitudes pendientes; la API y las
+  pruebas de punta a punta recorren el flujo completo y la regla de que la cuenta solo se activa con
+  solicitud aprobada + correo verificado + celular verificado, en cualquier orden). Limitaciones que
+  hay que decir: (1) **el código del celular llega por correo, no por WhatsApp**, porque Meta no
+  permite plantillas de autenticación sin verificación comercial (ADR-0006), así que el celular se
+  verifica solo en el sentido de que quien se registra recibe un código, no de que posea ese
+  número; la verificación real por WhatsApp sigue como nivel 3; (2) el rol solicitado lo aprueba la
+  jerarquía del enunciado, pero el primer Administrador y las cuentas de demostración se crean
+  fuera de la aplicación; (3) para entrar, además de estar activa en la plataforma, la persona
+  necesita una identidad en el proveedor (Auth0), que hoy se crea aparte. Consecuencia que conviene
+  saber explicar: **autenticarse en el proveedor no basta para entrar**; quien no tenga persona
+  activa en la plataforma recibe «No existe una cuenta» (ADR-0004).
 - Del cliente web falta el **detalle de un Kudo** como pantalla propia.
 - Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
   desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Verificados en
