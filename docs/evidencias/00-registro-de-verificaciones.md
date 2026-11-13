@@ -571,3 +571,24 @@ código. Corregido: `GuardarAsync` crea el contenedor (privado, idempotente) si 
 responde `NoSuchBucket`, y hay una prueba que guarda contra un contenedor que no existe.
 
 **Verificado en producción (2026-11-13, desde el celular):** se publicó un Kudo con una imagen, el adjunto se subió y se abrió desde el muro. Desplegado con api `0.1.0-702546c` y web `0.1.0-6cac0fb`.
+
+## 2026-11-13 — Registro, verificación y aprobación de cuentas, verificado en producción
+
+Recorrido real contra el sistema desplegado (api `0.1.0-bf44ef3`, web `0.1.0-1ca764b`):
+
+1. Desde `/registro`, sin sesión, se solicitó una cuenta de **Estudiante** en el programa de la
+   demostración. Quedó pendiente y no podía entrar.
+2. Llegaron por correo los dos códigos (correo y celular) y se verificaron en `/verificar`.
+3. El **Rector** abrió «Cuentas» y la lista salió vacía: es lo correcto, porque el Rector solo
+   aprueba solicitudes de Coordinador Académico. La de un Estudiante la aprueba el Coordinador de
+   Programa de su programa (RF-03).
+4. Con una Coordinadora de Programa del mismo programa, la solicitud apareció con «correo
+   verificado · celular verificado» y se aprobó.
+5. La cuenta quedó **Activa** y la persona entró a la plataforma con su identidad y llegó a la
+   pantalla de publicar.
+
+**Hallazgo del camino:** la prueba de punta a punta del flujo encontró, antes de desplegar, que
+aprobar al segundo estudiante de un programa fallaba con «ya hay alguien ejerciendo el rol»: la
+comprobación de unicidad por programa se aplicaba también a Docente y Estudiante. Corregido.
+
+**Límite que se declara:** el código del celular llega por correo, no por WhatsApp (ADR-0006).
