@@ -646,3 +646,18 @@ Contra el sistema desplegado (api `0.1.0-06869b7`, web `0.1.0-9610f27`):
 estudiante y en cuáles enseña un docente, y que el modelo tenía la tabla de vínculos sin que ninguna
 parte de la aplicación la usara. Al probarlo salió, además, que el registro aceptaba un programa de una
 facultad distinta de la indicada; ahora lo rechaza.
+
+## 2026-11-13 — El pipeline despliega por SSH, verificado
+
+Se configuraron la llave de comando forzado y los cuatro secretos, y se lanzó el CI del back-end sobre
+`main`. **Primer intento fallido, con una causa instructiva:** la conexión SSH funcionó —la llave, los
+secretos y la huella del servidor eran correctos y el servidor ejecutó el comando forzado—, pero el
+guion de despliegue todavía no estaba en la máquina: `No such file or directory`. El guion llega con un
+`git pull`, que no se había hecho; desde entonces el propio despliegue lo hace en cada ejecución.
+**Segundo intento (ejecución #123):** los siete trabajos en verde, incluido «Desplegar la API en el
+servidor» (22 s), y `/salud/listo` respondiendo 200 después. Captura:
+`02-cd-despliegue-desde-el-pipeline.png`.
+
+**Dos errores propios que salieron de esta tarea, y conviene contarlos:** el lanzamiento manual del
+back no publicaba ni desplegaba (las condiciones solo contemplaban `push`), y un cambio de formato en el
+README del cliente dejó su CI en rojo un rato por no pasar la comprobación de Prettier.
