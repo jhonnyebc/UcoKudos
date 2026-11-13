@@ -57,6 +57,12 @@ public sealed class PersonaRepositorio(UcoKudosDbContext contexto) : IPersonaRep
         {
             AmbitoRol.Universidad when !rol.EsUnicoEnLaUniversidad => Task.FromResult(false),
             AmbitoRol.Universidad => contexto.AsignacionesRol.AnyAsync(a => a.Activa && a.RolId == rolId, ct),
+
+            // Docente y Estudiante tienen ámbito de programa pero NO son únicos: puede haber cientos
+            // en el mismo programa. Sin esta línea, aprobar al segundo estudiante de un programa
+            // fallaba con «ya hay alguien ejerciendo el rol». Lo encontró la primera prueba de punta a
+            // punta del flujo de aprobación: ninguna anterior aprobaba a un estudiante.
+            AmbitoRol.Programa when rol.Id != Rol.CoordinadorPrograma.Id => Task.FromResult(false),
             AmbitoRol.Facultad => contexto.AsignacionesRol.AnyAsync(
                 a => a.Activa && a.RolId == rolId && a.FacultadId == facultadId, ct),
             _ => contexto.AsignacionesRol.AnyAsync(
@@ -65,6 +71,14 @@ public sealed class PersonaRepositorio(UcoKudosDbContext contexto) : IPersonaRep
     }
 
     public void AgregarRol(AsignacionRol asignacion) => contexto.AsignacionesRol.Add(asignacion);
+
+    public Task<VerificacionContacto?> VerificacionVigenteAsync(Guid personaId, TipoContacto tipo, CancellationToken ct) =>
+        contexto.VerificacionesContacto
+            .Where(v => v.PersonaId == personaId && v.Tipo == tipo && !v.Consumida)
+            .OrderByDescending(v => v.CreadaEn)
+            .FirstOrDefaultAsync(ct);
+
+    public void AgregarVerificacion(VerificacionContacto verificacion) => contexto.VerificacionesContacto.Add(verificacion);
 
     public async Task<IReadOnlyList<Persona>> PendientesDeAprobacionAsync(
         Guid? facultadId, Guid? programaId, CancellationToken ct)

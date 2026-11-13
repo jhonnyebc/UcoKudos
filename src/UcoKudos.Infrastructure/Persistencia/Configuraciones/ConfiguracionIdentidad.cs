@@ -40,6 +40,27 @@ internal sealed class ConfiguracionPersona : IEntityTypeConfiguration<Persona>
     }
 }
 
+/// <summary>Mapeo de <see cref="VerificacionContacto"/>: guarda la huella del código, nunca el código.</summary>
+internal sealed class ConfiguracionVerificacionContacto : IEntityTypeConfiguration<VerificacionContacto>
+{
+    public void Configure(EntityTypeBuilder<VerificacionContacto> entidad)
+    {
+        entidad.ToTable("verificacion_contacto", UcoKudosDbContext.EsquemaNucleo);
+        entidad.HasKey(v => v.Id);
+
+        entidad.Property(v => v.Id).HasColumnName("id").ValueGeneratedNever();
+        entidad.Property(v => v.PersonaId).HasColumnName("persona_id");
+        entidad.Property(v => v.Tipo).HasColumnName("tipo").HasConversion<string>().HasMaxLength(20);
+        entidad.Property(v => v.HuellaCodigo).HasColumnName("huella_codigo").HasMaxLength(64).IsRequired();
+        entidad.Property(v => v.CreadaEn).HasColumnName("creada_en");
+        entidad.Property(v => v.ExpiraEn).HasColumnName("expira_en");
+        entidad.Property(v => v.Intentos).HasColumnName("intentos");
+        entidad.Property(v => v.Consumida).HasColumnName("consumida");
+
+        entidad.HasIndex(v => new { v.PersonaId, v.Tipo }).HasDatabaseName("ix_verificacion_persona_tipo");
+    }
+}
+
 /// <summary>
 /// Mapeo de <see cref="AsignacionRol"/>. Aquí viven los **índices únicos parciales** que defienden
 /// las dos restricciones organizacionales del enunciado (RF-04, RN-04).

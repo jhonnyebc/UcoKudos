@@ -208,6 +208,8 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<AdjuntosCasosUso>();
         servicios.AddScoped<CategoriasCasosUso>();
         servicios.AddScoped<RegistrarCuentaCasoUso>();
+        servicios.AddScoped<VerificarContactoCasoUso>();
+        servicios.AddScoped<ReenviarCodigosCasoUso>();
         servicios.AddScoped<ResolverSolicitudCasoUso>();
         servicios.AddScoped<ConsultarIdentidadCasoUso>();
         servicios.AddScoped<BuscarPersonasCasoUso>();

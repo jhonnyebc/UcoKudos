@@ -39,6 +39,11 @@ public interface IPersonaRepositorio
 
     void AgregarRol(AsignacionRol asignacion);
 
+    /// <summary>El código de verificación más reciente de un tipo, sin consumir. Null si no hay.</summary>
+    Task<VerificacionContacto?> VerificacionVigenteAsync(Guid personaId, TipoContacto tipo, CancellationToken ct);
+
+    void AgregarVerificacion(VerificacionContacto verificacion);
+
     /// <summary>Personas con una solicitud pendiente dentro de un ámbito, para que su aprobador las vea.</summary>
     Task<IReadOnlyList<Persona>> PendientesDeAprobacionAsync(Guid? facultadId, Guid? programaId, CancellationToken ct);
 }

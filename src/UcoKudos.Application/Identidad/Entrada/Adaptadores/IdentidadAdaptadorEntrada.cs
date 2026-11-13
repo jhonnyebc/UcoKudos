@@ -9,12 +9,20 @@ namespace UcoKudos.Application.Identidad.Entrada.Adaptadores;
 /// <summary>Adaptador de entrada del módulo de identidad: compone los casos de uso tras el puerto.</summary>
 public sealed class IdentidadAdaptadorEntrada(
     RegistrarCuentaCasoUso registrar,
+    VerificarContactoCasoUso verificar,
+    ReenviarCodigosCasoUso reenviar,
     ResolverSolicitudCasoUso resolver,
     ConsultarIdentidadCasoUso consultar,
     BuscarPersonasCasoUso buscar) : IIdentidadPuertoEntrada
 {
     public Task<PersonaDto> RegistrarAsync(RegistrarCuentaDto datos, string correlacionId, CancellationToken ct) =>
         registrar.EjecutarAsync(datos, correlacionId, ct);
+
+    public Task<EstadoRegistroDto> VerificarContactoAsync(VerificarContactoDto datos, string correlacionId, CancellationToken ct) =>
+        verificar.EjecutarAsync(datos, correlacionId, ct);
+
+    public Task ReenviarCodigosAsync(string correoInstitucional, string correlacionId, CancellationToken ct) =>
+        reenviar.EjecutarAsync(correoInstitucional, correlacionId, ct);
 
     public Task<PersonaDto?> MiPerfilAsync(Guid personaId, CancellationToken ct) =>
         consultar.MiPerfilAsync(personaId, ct);

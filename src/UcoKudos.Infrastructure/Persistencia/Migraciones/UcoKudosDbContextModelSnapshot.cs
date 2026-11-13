@@ -313,6 +313,52 @@ namespace UcoKudos.Infrastructure.Persistencia.Migraciones
                         });
                 });
 
+            modelBuilder.Entity("UcoKudos.Domain.Identidad.VerificacionContacto", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("Consumida")
+                        .HasColumnType("boolean")
+                        .HasColumnName("consumida");
+
+                    b.Property<DateTimeOffset>("CreadaEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("creada_en");
+
+                    b.Property<DateTimeOffset>("ExpiraEn")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expira_en");
+
+                    b.Property<string>("HuellaCodigo")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("huella_codigo");
+
+                    b.Property<int>("Intentos")
+                        .HasColumnType("integer")
+                        .HasColumnName("intentos");
+
+                    b.Property<Guid>("PersonaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("persona_id");
+
+                    b.Property<string>("Tipo")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("tipo");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PersonaId", "Tipo")
+                        .HasDatabaseName("ix_verificacion_persona_tipo");
+
+                    b.ToTable("verificacion_contacto", "nucleo");
+                });
+
             modelBuilder.Entity("UcoKudos.Domain.Interaccion.Calificacion", b =>
                 {
                     b.Property<Guid>("Id")

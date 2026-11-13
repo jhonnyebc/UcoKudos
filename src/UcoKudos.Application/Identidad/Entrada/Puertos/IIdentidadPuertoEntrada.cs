@@ -9,6 +9,12 @@ public interface IIdentidadPuertoEntrada
     /// <summary>Registro de una cuenta nueva. Queda pendiente de aprobación (RF-01, RF-02).</summary>
     Task<PersonaDto> RegistrarAsync(RegistrarCuentaDto datos, string correlacionId, CancellationToken ct);
 
+    /// <summary>Comprueba un código de verificación del correo o del celular (RF-02). Sin sesión.</summary>
+    Task<EstadoRegistroDto> VerificarContactoAsync(VerificarContactoDto datos, string correlacionId, CancellationToken ct);
+
+    /// <summary>Emite códigos nuevos para una cuenta pendiente. No revela si la cuenta existe.</summary>
+    Task ReenviarCodigosAsync(string correoInstitucional, string correlacionId, CancellationToken ct);
+
     /// <summary>El perfil del usuario autenticado.</summary>
     Task<PersonaDto?> MiPerfilAsync(Guid personaId, CancellationToken ct);
 

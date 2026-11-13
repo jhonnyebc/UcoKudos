@@ -28,6 +28,7 @@ public sealed class UcoKudosDbContext(DbContextOptions<UcoKudosDbContext> opcion
 
     public DbSet<Persona> Personas => Set<Persona>();
     public DbSet<AsignacionRol> AsignacionesRol => Set<AsignacionRol>();
+    public DbSet<VerificacionContacto> VerificacionesContacto => Set<VerificacionContacto>();
     public DbSet<Facultad> Facultades => Set<Facultad>();
     public DbSet<Programa> Programas => Set<Programa>();
     public DbSet<VinculoAcademico> VinculosAcademicos => Set<VinculoAcademico>();

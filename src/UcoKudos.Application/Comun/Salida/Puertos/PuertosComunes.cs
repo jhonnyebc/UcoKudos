@@ -75,6 +75,7 @@ public static class TiposEvento
     public const string SolicitudRechazada = "solicitud.rechazada";
     public const string ContenidoVetado = "contenido.vetado";
     public const string VerificacionCelularSolicitada = "verificacion.celular";
+    public const string VerificacionCorreoSolicitada = "verificacion.correo";
 }
 
 /// <summary>

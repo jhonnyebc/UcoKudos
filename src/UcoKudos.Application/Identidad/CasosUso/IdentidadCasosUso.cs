@@ -55,15 +55,10 @@ public sealed class RegistrarCuentaCasoUso(
             contexto, AccionesAuditoria.SolicitudPresentar, nameof(Persona), persona.Id,
             new { rol = rol.Nombre, facultadId = datos.FacultadId, programaId = datos.ProgramaId }, ahora, ct);
 
-        // Código de verificación del celular por WhatsApp (RF-02), reutilizando el mismo adaptador
-        // de salida que los avisos de Kudos (ADR-0004).
-        var codigo = GenerarCodigo();
-        bandeja.Programar(new EventoPendiente(
-            EventoId: Guid.CreateVersion7(ahora),
-            TipoEvento: TiposEvento.VerificacionCelularSolicitada,
-            Carga: JsonSerializer.Serialize(new CargaVerificacion(persona.Id, codigo)),
-            OcurridoEn: ahora,
-            ContextoTraza: correlacionId));
+        // Un código para el correo y otro para el celular (RF-02). Se guarda su huella y se avisa por
+        // la bandeja de salida, igual que cualquier otro aviso (ADR-0004).
+        await CodigosDeVerificacion.EmitirAsync(personas, bandeja, persona.Id, TipoContacto.Correo, ahora, correlacionId, ct);
+        await CodigosDeVerificacion.EmitirAsync(personas, bandeja, persona.Id, TipoContacto.Celular, ahora, correlacionId, ct);
 
         await unidadTrabajo.ConfirmarAsync(ct);
 
@@ -83,16 +78,160 @@ public sealed class RegistrarCuentaCasoUso(
         }
     }
 
-    /// <summary>
-    /// Código de un solo uso, generado con un generador criptográfico. Seis dígitos es lo habitual,
-    /// y lo que lo hace seguro no es la longitud sino el límite de intentos y la expiración.
-    /// </summary>
-    private static string GenerarCodigo() =>
-        RandomNumberGenerator.GetInt32(100000, 1000000).ToString(System.Globalization.CultureInfo.InvariantCulture);
-
     internal static PersonaDto Convertir(Persona persona, Rol rol) =>
         new(persona.Id, persona.CorreoInstitucional, persona.NombreCompleto, rol.Nombre,
             persona.Estado.ToString(), persona.CorreoVerificado, persona.CelularVerificado);
+}
+
+/// <summary>
+/// Emite códigos de verificación y los programa para enviarse. Lo comparten el registro y el reenvío.
+/// </summary>
+internal static class CodigosDeVerificacion
+{
+    public static async Task EmitirAsync(
+        IPersonaRepositorio personas,
+        IBandejaSalida bandeja,
+        Guid personaId,
+        TipoContacto tipo,
+        DateTimeOffset ahora,
+        string correlacionId,
+        CancellationToken ct)
+    {
+        // El código nuevo invalida el anterior: solo el último sirve.
+        var anterior = await personas.VerificacionVigenteAsync(personaId, tipo, ct);
+        anterior?.Reemplazar();
+
+        var codigo = Generar();
+        personas.AgregarVerificacion(new VerificacionContacto(personaId, tipo, codigo, ahora));
+
+        bandeja.Programar(new EventoPendiente(
+            EventoId: Guid.CreateVersion7(ahora),
+            TipoEvento: tipo == TipoContacto.Correo
+                ? TiposEvento.VerificacionCorreoSolicitada
+                : TiposEvento.VerificacionCelularSolicitada,
+            Carga: JsonSerializer.Serialize(new CargaVerificacion(personaId, codigo)),
+            OcurridoEn: ahora,
+            ContextoTraza: correlacionId));
+    }
+
+    /// <summary>
+    /// Seis dígitos de un generador criptográfico. Lo que lo hace seguro no es la longitud sino el
+    /// límite de intentos y el vencimiento (ver <see cref="VerificacionContacto"/>).
+    /// </summary>
+    private static string Generar() =>
+        RandomNumberGenerator.GetInt32(100000, 1000000).ToString(System.Globalization.CultureInfo.InvariantCulture);
+}
+
+/// <summary>
+/// Comprobar un código de verificación (RF-02). Es público —quien se registra todavía no tiene
+/// cuenta con la que entrar—, y por eso **no revela nada**: «la cuenta no existe» y «no hay código
+/// vigente» dan el mismo mensaje, para que no sirva de buscador de correos registrados.
+/// </summary>
+public sealed class VerificarContactoCasoUso(
+    IPersonaRepositorio personas,
+    IUnidadTrabajo unidadTrabajo,
+    ServicioAuditoria auditoria,
+    TimeProvider reloj)
+{
+    // **Un solo mensaje para todo lo que sale mal**, a propósito: distinguir «la cuenta no existe»,
+    // «el código venció» y «te quedaste sin intentos» le diría a un desconocido qué correos están
+    // registrados. Esta ruta es pública.
+    private const string SinCodigo = "El código no es correcto o ya no está vigente. Si hace falta, pide uno nuevo.";
+
+    public async Task<EstadoRegistroDto> EjecutarAsync(VerificarContactoDto datos, string correlacionId, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(datos);
+
+        var tipo = datos.Tipo.ToUpperInvariant() switch
+        {
+            "CORREO" => TipoContacto.Correo,
+            "CELULAR" => TipoContacto.Celular,
+            _ => throw new ExcepcionDominio("El tipo de verificación debe ser «correo» o «celular».")
+        };
+
+        var ahora = reloj.GetUtcNow();
+        var persona = await personas.PorCorreoAsync(datos.CorreoInstitucional, ct)
+                      ?? throw new ExcepcionDominio(SinCodigo);
+
+        // Ya verificado: no hay nada que comprobar, y no se distingue de cualquier otro fallo.
+        if ((tipo == TipoContacto.Correo && persona.CorreoVerificado)
+            || (tipo == TipoContacto.Celular && persona.CelularVerificado))
+        {
+            throw new ExcepcionDominio(SinCodigo);
+        }
+
+        var verificacion = await personas.VerificacionVigenteAsync(persona.Id, tipo, ct)
+                           ?? throw new ExcepcionDominio(SinCodigo);
+
+        var resultado = verificacion.Verificar(datos.Codigo, ahora);
+
+        if (resultado == ResultadoCodigo.Correcto)
+        {
+            if (tipo == TipoContacto.Correo)
+                persona.VerificarCorreo();
+            else
+                persona.VerificarCelular();
+
+            var asignacion = await personas.RolActivoAsync(persona.Id, ct);
+            var rol = asignacion?.Rol ?? Rol.Estudiante;
+            var contexto = new ContextoPeticion(
+                new AmbitoUsuario(persona.Id, rol, asignacion?.FacultadId, asignacion?.ProgramaId), correlacionId);
+
+            await auditoria.RegistrarAsync(
+                contexto, AccionesAuditoria.ContactoVerificar, nameof(Persona), persona.Id,
+                new { tipo = tipo.ToString() }, ahora, ct);
+        }
+
+        // Se confirma SIEMPRE, también con un código incorrecto: el intento fallido tiene que quedar
+        // contado, o el límite de intentos no limitaría nada.
+        await unidadTrabajo.ConfirmarAsync(ct);
+
+        return resultado switch
+        {
+            ResultadoCodigo.Correcto => Estado(persona),
+            _ => throw new ExcepcionDominio(SinCodigo)
+        };
+    }
+
+    internal static EstadoRegistroDto Estado(Persona persona) =>
+        new(persona.CorreoVerificado, persona.CelularVerificado, persona.SolicitudAprobada, persona.Estado.ToString());
+}
+
+/// <summary>
+/// Pedir códigos nuevos. Silencioso a propósito: responde igual exista o no la cuenta, y no manda
+/// más de un código por minuto para que no sirva de megáfono de correos.
+/// </summary>
+public sealed class ReenviarCodigosCasoUso(
+    IPersonaRepositorio personas,
+    IUnidadTrabajo unidadTrabajo,
+    IBandejaSalida bandeja,
+    TimeProvider reloj)
+{
+    private static readonly TimeSpan EsperaMinima = TimeSpan.FromMinutes(1);
+
+    public async Task EjecutarAsync(string correoInstitucional, string correlacionId, CancellationToken ct)
+    {
+        var ahora = reloj.GetUtcNow();
+        var persona = await personas.PorCorreoAsync(correoInstitucional, ct);
+
+        if (persona is null || persona.Estado != EstadoCuenta.Pendiente)
+            return;
+
+        foreach (var tipo in new[] { TipoContacto.Correo, TipoContacto.Celular })
+        {
+            var yaVerificado = tipo == TipoContacto.Correo ? persona.CorreoVerificado : persona.CelularVerificado;
+            if (yaVerificado)
+                continue;
+
+            var ultima = await personas.VerificacionVigenteAsync(persona.Id, tipo, ct);
+            if (ultima is not null && ahora - ultima.CreadaEn < EsperaMinima)
+                continue;
+
+            await CodigosDeVerificacion.EmitirAsync(personas, bandeja, persona.Id, tipo, ahora, correlacionId, ct);
+        }
+
+        await unidadTrabajo.ConfirmarAsync(ct);
+    }
 }
 
 /// <summary>

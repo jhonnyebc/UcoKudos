@@ -25,6 +25,22 @@ public sealed record PersonaDto(
     bool CorreoVerificado,
     bool CelularVerificado);
 
+/// <summary>Un código que alguien recibió, para comprobar su correo o su celular.</summary>
+/// <param name="CorreoInstitucional">El correo con el que se registró.</param>
+/// <param name="Tipo">«correo» o «celular».</param>
+/// <param name="Codigo">Los seis dígitos recibidos.</param>
+public sealed record VerificarContactoDto(string CorreoInstitucional, string Tipo, string Codigo);
+
+/// <summary>Pedir códigos nuevos para una cuenta pendiente.</summary>
+public sealed record ReenviarCodigosDto(string CorreoInstitucional);
+
+/// <summary>En qué punto está el registro de una cuenta: qué falta para que quede activa.</summary>
+public sealed record EstadoRegistroDto(
+    bool CorreoVerificado,
+    bool CelularVerificado,
+    bool SolicitudAprobada,
+    string EstadoCuenta);
+
 /// <summary>Motivo del rechazo de una solicitud. Va al aviso que recibe el solicitante.</summary>
 public sealed record RechazarSolicitudDto(string Motivo);
 

@@ -86,7 +86,8 @@ public sealed class ProcesarEventoCasoUso(
         TiposEvento.SolicitudAprobada => DeSolicitud(eventoId, carga, ClavesMensaje.SolicitudAprobada),
         TiposEvento.SolicitudRechazada => DeSolicitud(eventoId, carga, ClavesMensaje.SolicitudRechazada),
         TiposEvento.ContenidoVetado => DeContenidoVetado(eventoId, carga),
-        TiposEvento.VerificacionCelularSolicitada => DeVerificacion(eventoId, carga),
+        TiposEvento.VerificacionCelularSolicitada => DeVerificacion(eventoId, carga, ClavesMensaje.CodigoVerificacion),
+        TiposEvento.VerificacionCorreoSolicitada => DeVerificacion(eventoId, carga, ClavesMensaje.CodigoVerificacionCorreo),
         _ => null
     };
 
@@ -137,7 +138,7 @@ public sealed class ProcesarEventoCasoUso(
             : new SolicitudNotificacion(eventoId, datos.AutorId, ClavesMensaje.ContenidoVetado, [datos.Motivo], null);
     }
 
-    private static SolicitudNotificacion? DeVerificacion(Guid eventoId, string carga)
+    private static SolicitudNotificacion? DeVerificacion(Guid eventoId, string carga, string clave)
     {
         var datos = JsonSerializer.Deserialize<CargaVerificacion>(carga);
         return datos is null
@@ -145,7 +146,7 @@ public sealed class ProcesarEventoCasoUso(
             : new SolicitudNotificacion(
                 eventoId,
                 datos.PersonaId,
-                ClavesMensaje.CodigoVerificacion,
+                clave,
                 [datos.Codigo, GatewayNotificaciones.MinutosDeVigenciaDelCodigo.ToString(System.Globalization.CultureInfo.InvariantCulture)],
                 null);
     }

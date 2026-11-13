@@ -35,6 +35,33 @@ public static class EndpointsIdentidad
             "La cuenta se activa solo con las tres condiciones de RF-02: solicitud aprobada, correo "
             + "verificado y celular verificado.");
 
+        grupo.MapPost("/verificar", async (
+            VerificarContactoDto datos,
+            IIdentidadPuertoEntrada puerto,
+            HttpContext http,
+            CancellationToken ct) =>
+            Results.Ok(await puerto.VerificarContactoAsync(datos, ContextoUsuario.Correlacion(http), ct)))
+        .AllowAnonymous()
+        .WithName("VerificarContacto")
+        .WithSummary("Comprueba el código recibido por correo o por celular")
+        .WithDescription(
+            "Sin sesión: quien se registra todavía no tiene cuenta con la que entrar. Cinco intentos "
+            + "por código y vigencia de diez minutos. No revela si una cuenta existe.");
+
+        grupo.MapPost("/reenviar-codigos", async (
+            ReenviarCodigosDto datos,
+            IIdentidadPuertoEntrada puerto,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            await puerto.ReenviarCodigosAsync(datos.CorreoInstitucional, ContextoUsuario.Correlacion(http), ct);
+            return Results.NoContent();
+        })
+        .AllowAnonymous()
+        .WithName("ReenviarCodigos")
+        .WithSummary("Pide códigos nuevos para una cuenta pendiente")
+        .WithDescription("Responde 204 exista o no la cuenta, y espera un minuto entre envíos.");
+
         grupo.MapGet("/yo", async (
             IIdentidadPuertoEntrada puerto,
             IPersonaRepositorio personas,

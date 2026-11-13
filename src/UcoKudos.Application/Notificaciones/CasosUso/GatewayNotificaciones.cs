@@ -32,7 +32,8 @@ public static class PoliticaCanal
         // por una restricción del proveedor: Meta no permite crear plantillas de categoría
         // Autenticación en una cuenta sin verificación comercial. El motivo completo está en el
         // catálogo, junto al mensaje. Sale por correo y queda como aviso dentro de la aplicación.
-        [ClavesMensaje.CodigoVerificacion] = [Canal.Correo, Canal.TiempoReal]
+        [ClavesMensaje.CodigoVerificacion] = [Canal.Correo, Canal.TiempoReal],
+        [ClavesMensaje.CodigoVerificacionCorreo] = [Canal.Correo]
     };
 
     public static IReadOnlyList<Canal> Para(string claveMensaje) =>
@@ -79,7 +80,7 @@ public sealed class GatewayNotificaciones(
     IRepositorioAvisos repositorioAvisos)
 {
     /// <summary>Minutos que el código de verificación sigue siendo válido. Va en el texto del mensaje.</summary>
-    public const int MinutosDeVigenciaDelCodigo = 10;
+    public const int MinutosDeVigenciaDelCodigo = 10; // igual a VerificacionContacto.Vigencia
 
     public async Task<IReadOnlyList<ResultadoNotificacion>> NotificarAsync(
         SolicitudNotificacion solicitud,

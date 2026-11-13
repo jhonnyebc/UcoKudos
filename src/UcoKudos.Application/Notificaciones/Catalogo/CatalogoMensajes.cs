@@ -11,6 +11,7 @@ public static class ClavesMensaje
     public const string SolicitudRechazada = "solicitud.rechazada";
     public const string ContenidoVetado = "contenido.vetado";
     public const string CodigoVerificacion = "verificacion.codigo";
+    public const string CodigoVerificacionCorreo = "verificacion.codigo_correo";
 }
 
 /// <summary>
@@ -86,7 +87,7 @@ public static class CatalogoMensajes
             ClavesMensaje.CodigoVerificacion,
             "Código de verificación de UCO Kudos",
             "Código de verificación",
-            "Tu código de verificación es {0}. Vence en {1} minutos.",
+            "Tu código para verificar tu celular en UCO Kudos es {0}. Vence en {1} minutos.",
             ["codigo", "minutos"],
 
             // **Sin plantilla de WhatsApp, y es una decisión, no un olvido.**
@@ -103,6 +104,14 @@ public static class CatalogoMensajes
             //
             // Si algún día se verifica el negocio, se crea la plantilla y se vuelve a poner su nombre
             // aquí: el canal se reactiva solo para este mensaje.
+            null),
+
+        [ClavesMensaje.CodigoVerificacionCorreo] = new(
+            ClavesMensaje.CodigoVerificacionCorreo,
+            "Verifica tu correo en UCO Kudos",
+            "Verifica tu correo",
+            "Tu código para verificar tu correo en UCO Kudos es {0}. Vence en {1} minutos.",
+            ["codigo", "minutos"],
             null)
     };
 
