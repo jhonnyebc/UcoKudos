@@ -661,3 +661,5 @@ servidor» (22 s), y `/salud/listo` respondiendo 200 después. Captura:
 **Dos errores propios que salieron de esta tarea, y conviene contarlos:** el lanzamiento manual del
 back no publicaba ni desplegaba (las condiciones solo contemplaban `push`), y un cambio de formato en el
 README del cliente dejó su CI en rojo un rato por no pasar la comprobación de Prettier.
+
+**El cliente, igual:** lanzado a mano sobre `main`, la ejecución #52 del repositorio del cliente terminó con sus cinco trabajos en verde, incluido «Desplegar el cliente en el servidor» (10 s). Captura: `02-cd-despliegue-del-cliente-desde-el-pipeline.png`. La aplicación siguió respondiendo después.
