@@ -126,15 +126,23 @@ decirlo con precisión**, porque la expresión se queda corta:
 - **Automatizado por el pipeline:** construir la imagen, escanearla con Trivy y **publicarla**
   en el registro con la etiqueta de versión y commit, solo desde `main` y solo si pasaron todas las
   puertas. Eso es lo que hace el CI en cada cambio.
-- **No automatizado por el pipeline:** el despliegue en la máquina. Lo hace `scripts/desplegar.sh`,
-  que **se ejecuta a mano por SSH** con las dos etiquetas: trae las imágenes, aplica las migraciones,
+- **Hasta esa revisión no estaba automatizado por el pipeline:** el despliegue en la máquina lo hacía
+  `scripts/desplegar.sh`, que **se ejecutaba a mano por SSH** con las dos etiquetas: trae las imágenes, aplica las migraciones,
   arranca la versión nueva, recarga el proxy y comprueba que responde. Es un solo comando y es
   repetible, pero no lo dispara ningún evento de GitHub.
 
 La razón fue de riesgo y no de pereza: un despliegue disparado por el pipeline exige guardar en
 GitHub una llave SSH de la máquina, y en la semana de la entrega pesó más no dejar un secreto con
-acceso al servidor en un tercero. **El paso que falta** es un trabajo del flujo que, tras publicar,
-se conecte por SSH y ejecute ese mismo guion; el guion ya está hecho para que ese cambio sea pequeño.
+acceso al servidor en un tercero. **Ese paso se añadió el mismo día.** Cada repositorio tiene ahora un trabajo `desplegar` que, tras
+publicar la imagen escaneada desde `main`, se conecta por SSH y despliega **solo su componente**
+(`scripts/desplegar.sh` acepta un guion en lugar de una etiqueta para conservar la que ya hay). Lo
+resuelve el riesgo que lo había frenado con **mínimo privilegio**: la llave del pipeline es una
+llave de comando forzado, así que en el servidor solo puede pedir `desplegar <api|web> <etiqueta>`,
+validada con una expresión anclada, sin terminal ni reenvío de puertos; el servidor se identifica con
+una huella fijada, y un candado serializa los despliegues porque los dos repositorios pueden
+terminar casi a la vez. Un push a `main` ya no cancela la ejecución en marcha, que podría estar a
+mitad de un despliegue. Si faltan los secretos, el trabajo termina con una advertencia visible y
+no en silencio. La configuración está en la sección 8.5 del manual.
 
 ## Referencias
 

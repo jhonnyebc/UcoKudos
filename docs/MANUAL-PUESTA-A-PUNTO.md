@@ -327,6 +327,61 @@ docker run --rm -v ucokudos_ucokudos-objetos:/datos -v "$PWD":/salida alpine tar
 
 **Y hay que probar la restauración al menos una vez.** Un respaldo que nunca se ha restaurado es un archivo del que no se sabe nada.
 
+### 8.5 Despliegue que dispara el pipeline
+
+Cada repositorio tiene un trabajo `desplegar` que, tras publicar la imagen escaneada desde `main`,
+se conecta por SSH y despliega **solo su componente**: el de la API despliega la API y el del cliente
+despliega el cliente, y cada uno deja como está la versión del otro. Sin la configuración de abajo el
+trabajo no falla: termina con una **advertencia** que dice que la imagen se publicó y no se desplegó.
+
+La llave del pipeline es una **llave de comando forzado**: en el servidor solo puede ejecutar
+`scripts/desplegar-desde-pipeline.sh`, que acepta únicamente `desplegar api <etiqueta>` o
+`desplegar web <etiqueta>` con una etiqueta publicada por el pipeline. No da terminal, ni reenvío de
+puertos, ni forma de ejecutar otra cosa. Eso es lo que hace razonable guardarla en GitHub.
+
+**Una sola vez, desde tu equipo** (no dentro del servidor). Primero, la llave:
+
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/ucokudos_pipeline -N "" -C pipeline-ucokudos
+```
+
+Después, instalar la parte pública en el servidor **con su restricción** (un solo comando, sin pegar
+nada en el servidor):
+
+```bash
+{ printf 'command="/home/azureuser/UcoKudos/scripts/desplegar-desde-pipeline.sh",no-pty,no-port-forwarding,no-agent-forwarding,no-X11-forwarding '; cat ~/.ssh/ucokudos_pipeline.pub; } | ssh -i ~/.ssh/ucokudos_key.pem azureuser@20.83.117.236 'cat >> ~/.ssh/authorized_keys'
+```
+
+El servidor debe tener el repositorio actualizado, porque el guion se trae con él:
+
+```bash
+ssh -i ~/.ssh/ucokudos_key.pem azureuser@20.83.117.236 'cd ~/UcoKudos && git pull && chmod +x scripts/desplegar-desde-pipeline.sh'
+```
+
+La huella del servidor, para que el pipeline no obedezca a un impostor:
+
+```bash
+ssh-keyscan -t ed25519 20.83.117.236 > /tmp/huella-ucokudos.txt
+```
+
+Y los cuatro secretos, en **cada** repositorio (con la CLI de GitHub, sin pegarlos en ninguna parte):
+
+```bash
+for repo in UcoKudos UcoKudosWeb; do
+  gh secret set DESPLIEGUE_SSH_KEY -R jhonnyebc/$repo < ~/.ssh/ucokudos_pipeline
+  gh secret set DESPLIEGUE_HUELLA_DEL_SERVIDOR -R jhonnyebc/$repo < /tmp/huella-ucokudos.txt
+  gh secret set DESPLIEGUE_HOST -R jhonnyebc/$repo --body 20.83.117.236
+  gh secret set DESPLIEGUE_USUARIO -R jhonnyebc/$repo --body azureuser
+done
+```
+
+**Probarlo:** lanzar a mano el flujo de cualquiera de los dos repositorios (pestaña *Actions*,
+*Run workflow* sobre `main`) y mirar el trabajo `desplegar`. Si el servidor no responde o rechaza la
+llave, el trabajo falla con el error de SSH; si faltan secretos, termina con la advertencia.
+
+**Si hay que revocarla:** borrar la línea `pipeline-ucokudos` de `~/.ssh/authorized_keys` en el
+servidor. El despliegue a mano (sección 8.4) sigue funcionando igual.
+
 ## 9. Problemas conocidos
 
 | Síntoma | Causa y solución |

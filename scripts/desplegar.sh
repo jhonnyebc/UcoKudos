@@ -23,11 +23,26 @@ VERSION_WEB="${2:-}"
 if [ -z "$VERSION_API" ] || [ -z "$VERSION_WEB" ]; then
   echo "Faltan versiones. Uso: ./scripts/desplegar.sh <etiqueta-api> <etiqueta-web>" >&2
   echo "Las etiquetas publicadas están en el registro de cada repositorio." >&2
+  echo "Un guion («-») en lugar de una etiqueta conserva la que ya está desplegada." >&2
   exit 1
 fi
 
 if [ ! -f .env ]; then
   echo "Falta .env en el servidor. Copiar .env.produccion.example y rellenarlo." >&2
+  exit 1
+fi
+
+# «-» significa «la que ya está». Lo usa el pipeline: cada repositorio despliega solo su componente
+# y no tiene por qué saber qué versión tiene el otro.
+if [ "$VERSION_API" = "-" ]; then
+  VERSION_API=$(sed -n 's/^VERSION_API=//p' .env)
+fi
+if [ "$VERSION_WEB" = "-" ]; then
+  VERSION_WEB=$(sed -n 's/^VERSION_WEB=//p' .env)
+fi
+
+if [ -z "$VERSION_API" ] || [ -z "$VERSION_WEB" ]; then
+  echo "No hay versión anterior en .env para conservar. Indicar las dos etiquetas." >&2
   exit 1
 fi
 

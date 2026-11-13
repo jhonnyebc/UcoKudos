@@ -398,7 +398,7 @@ Una máquina virtual propia, con todo en contenedores y un único puerto expuest
 
 El criterio que decidió entre las opciones no fue técnico sino de riesgo de calendario: **que la plataforma responda de inmediato cuando el docente abra la URL**.
 
-**Lo que es y no es el «despliegue automatizado»:** el pipeline construye, escanea y **publica** la imagen en el registro con su etiqueta de versión y commit, solo desde `main` y solo si pasan las puertas. El despliegue en la máquina lo hace `scripts/desplegar.sh`, **que se ejecuta a mano por SSH**: un solo comando repetible que aplica las migraciones, arranca la versión nueva y comprueba que responde, pero que ningún evento de GitHub dispara. Está declarado en la revisión del 2026-11-13 de ADR-0016, con la razón (no guardar en un tercero una llave con acceso al servidor) y el paso que falta.
+**El despliegue lo dispara el pipeline.** Tras construir, escanear y **publicar** la imagen en el registro con su etiqueta de versión y commit —solo desde `main` y solo si pasan las puertas—, un trabajo `desplegar` en cada repositorio se conecta por SSH y ejecuta `scripts/desplegar.sh` (aplica las migraciones, arranca la versión nueva, recarga el proxy y comprueba que responde), desplegando solo su componente. Se añadió el 2026-11-13: antes se ejecutaba a mano por SSH, y la documentación lo llamaba «automatizado», que era una exageración (ver la revisión de ADR-0016). La llave del pipeline es de **comando forzado**: solo puede pedir `desplegar <api|web> <etiqueta>`. **Si faltan los secretos, el trabajo avisa y no despliega**; el despliegue a mano sigue disponible.
 
 ---
 
