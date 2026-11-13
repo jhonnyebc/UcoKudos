@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **191 unitarias, 6 de arquitectura, 59 de integración y 72 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **124 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **199 unitarias, 6 de arquitectura, 59 de integración y 72 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **137 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -553,11 +553,11 @@ eso vale en los dos sentidos.
   las enviara: la instrumentación emitía al vacío y el panel mostraba cero trazas y cero registros
   sin que nada fallara. Se detectó al ir a recoger la evidencia, no antes, porque **ningún síntoma
   apunta a una telemetría que no se exporta**: la aplicación funciona igual de bien.
-- Del **nivel 2**, tienen pantallas: el flujo de aprobaciones y **reportar y vetar** (verificados en
-  producción el 2026-11-13) y **calificar** (cinco estrellas en la tarjeta, con 10 escenarios de
-  punta a punta; ver el registro de verificaciones para su estado en producción). Sigue **sin
-  pantallas** las réplicas anidadas, que existen en la API; por la regla 4 de gobierno, eso cuenta
-  como no entregado.
+- **El nivel 2 está completo y con pantallas** (2026-11-13): el flujo de aprobaciones, reportar y
+  vetar, calificar con cinco estrellas y las **respuestas anidadas** (hilo con sangría, responder a
+  una respuesta, y calificar, reportar y vetar cada una). Aprobaciones y moderación están
+  verificadas en producción; calificar y responder se verificaron en producción cuando se
+  desplegaron (ver el registro de verificaciones).
   Reportar y vetar tienen 20 escenarios de punta a punta: solo el Rector y el Coordinador
   Académico vetan, el muro, el hilo y el detalle dejan de servir lo vetado, la cascada oculta al
   Kudo y su hilo o a una réplica y sus descendientes sin tocar a las hermanas, el autor recibe el
