@@ -487,7 +487,9 @@ Publicar Kudo con sus cinco pasos, autenticación, los siete roles con exclusivi
 
 ### 16.3 Nivel 3 — Diseñado y documentado, no implementado
 
-Gestión completa de la estructura académica, reportes e indicadores, número propio de WhatsApp y la **entrega por WhatsApp** del código de verificación del celular. El código en sí **sí se implementó** (de un solo uso, con vigencia e intentos limitados), pero se entrega por correo; ver 16.5.
+**La gestión completa de la estructura académica salió del nivel 3 el 2026-11-13** y está implementada y con pantallas (ver 16.5). Lo que sigue en el nivel 3:
+
+Reportes e indicadores, número propio de WhatsApp y la **entrega por WhatsApp** del código de verificación del celular. El código en sí **sí se implementó** (de un solo uso, con vigencia e intentos limitados), pero se entrega por correo; ver 16.5.
 
 ### 16.4 Reglas de gobierno
 
@@ -508,11 +510,11 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 21 diagramas Mermaid validados con el analizador oficial de Mermaid (v11.4.1, tras la última edición, 2026-11-13: 21 de 21 sin errores de sintaxis), manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **199 unitarias, 6 de arquitectura, 59 de integración y 93 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **137 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **238 unitarias, 6 de arquitectura, 59 de integración y 122 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **153 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **88,1 % sobre código nuevo** según Sonar (2026-11-13), por encima del 80 % exigido; la cifra global sigue siendo baja porque cuenta infraestructura y API, que solo prueban la integración y los escenarios de punta a punta. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
-| Funcionalidad | **Niveles 1 y 2 implementados y desplegados.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado (persistencia, correo, WhatsApp, tiempo real y auditoría), con adjuntos, categorías, registro y aprobación de cuentas, réplicas anidadas, calificaciones, y reportar y vetar. Del nivel 3 solo está el código de verificación, con la limitación declarada abajo |
+| Funcionalidad | **Niveles 1 y 2 implementados y desplegados.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado (persistencia, correo, WhatsApp, tiempo real y auditoría), con adjuntos, categorías, registro y aprobación de cuentas, réplicas anidadas, calificaciones, y reportar y vetar. Del nivel 3 están el código de verificación (con la limitación declarada abajo) y la gestión completa de la estructura académica |
 | Canales | **Los tres reales en producción** desde el 2026-11-12: correo por SMTP, WhatsApp por Meta Cloud API y tiempo real por SSE y Web Push. El correo sale por Gmail con contraseña de aplicación, no por un proveedor transaccional: ver la nota de abajo |
 
 **Lo que no está, y conviene decirlo antes de que se pregunte:**
@@ -535,6 +537,20 @@ eso vale en los dos sentidos.
   necesita una identidad en el proveedor (Auth0), que hoy se crea aparte. Consecuencia que conviene
   saber explicar: **autenticarse en el proveedor no basta para entrar**; quien no tenga persona
   activa en la plataforma recibe «No existe una cuenta» (ADR-0004).
+- **Gestión académica (RF-05), implementada el 2026-11-13.** El enunciado pide poder conocer qué
+  programas estudia un estudiante, en cuáles enseña un docente, qué programa acompaña un
+  Coordinador de Programa y qué facultad acompaña uno de Facultad. Al revisar el documento se vio que
+  el modelo tenía la tabla de vínculos y **ninguna parte de la aplicación la usaba**: cada persona
+  tenía un solo programa, el de su rol. Ahora cada quien ve los suyos, los coordinadores consultan y
+  vinculan a las personas **de su ámbito** (uno de programa, solo el suyo; uno de facultad, los de su
+  facultad; los de universidad, todos), y se administran facultades y programas (crear, editar,
+  activar y desactivar) desde la aplicación. Decisiones que el enunciado no fija y se tomaron:
+  administran la estructura el Administrador, el Rector y el Coordinador Académico, los mismos que
+  las categorías; **desactivar no borra** —las personas, los roles y los Kudos conservan su
+  programa— y solo cierra lo nuevo: deja de ofrecerse al registrarse y no admite vínculos
+  nuevos; y el registro ahora rechaza un programa desactivado y uno que no pertenece a la facultad
+  indicada, que antes se aceptaba. El programa del rol sigue siendo el principal; los vínculos
+  añaden otros, y un estudiante solo se matricula y un docente solo enseña.
 - Del cliente web falta el **detalle de un Kudo** como pantalla propia.
 - Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
   desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Verificados en
