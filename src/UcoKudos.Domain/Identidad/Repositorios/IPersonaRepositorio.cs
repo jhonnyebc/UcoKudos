@@ -44,6 +44,13 @@ public interface IPersonaRepositorio
 
     void AgregarVerificacion(VerificacionContacto verificacion);
 
+    /// <summary>
+    /// Las personas con un rol activo de esos, dentro del ámbito indicado (sin ámbito, todas). Es el
+    /// listado de quien administra: el filtro final por jerarquía lo hace cada acción.
+    /// </summary>
+    Task<IReadOnlyList<(Persona Persona, AsignacionRol Rol)>> AdministradasAsync(
+        IReadOnlyCollection<short> rolesAdministrados, Guid? facultadId, Guid? programaId, string? texto, int tamano, CancellationToken ct);
+
     /// <summary>Personas con una solicitud pendiente dentro de un ámbito, para que su aprobador las vea.</summary>
     Task<IReadOnlyList<Persona>> PendientesDeAprobacionAsync(Guid? facultadId, Guid? programaId, CancellationToken ct);
 }

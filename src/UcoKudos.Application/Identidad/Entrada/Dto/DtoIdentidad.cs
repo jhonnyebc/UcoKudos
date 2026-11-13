@@ -41,6 +41,16 @@ public sealed record EstadoRegistroDto(
     bool SolicitudAprobada,
     string EstadoCuenta);
 
+/// <summary>Una persona que quien consulta administra, con lo necesario para decidir sobre ella.</summary>
+public sealed record UsuarioAdministradoDto(
+    Guid Id, string NombreCompleto, string CorreoInstitucional, string Rol, string EstadoCuenta);
+
+/// <summary>Un motivo, para las acciones que lo exigen y quedan auditadas.</summary>
+public sealed record MotivoDto(string Motivo);
+
+/// <summary>El rol nuevo de una persona y, si lo necesita, su facultad o su programa.</summary>
+public sealed record CambiarRolDto(short RolId, Guid? FacultadId, Guid? ProgramaId, string Motivo);
+
 /// <summary>Motivo del rechazo de una solicitud. Va al aviso que recibe el solicitante.</summary>
 public sealed record RechazarSolicitudDto(string Motivo);
 

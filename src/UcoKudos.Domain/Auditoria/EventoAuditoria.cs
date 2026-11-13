@@ -35,6 +35,7 @@ public static class AccionesAuditoria
     public const string SolicitudRechazar = "solicitud.rechazar";
     public const string UsuarioCambiarRol = "usuario.cambiar_rol";
     public const string UsuarioDesactivar = "usuario.desactivar";
+    public const string UsuarioReactivar = "usuario.reactivar";
     public const string NotificacionEnviar = "notificacion.enviar";
     public const string NotificacionFallar = "notificacion.fallar";
 

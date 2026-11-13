@@ -80,6 +80,30 @@ public sealed class PersonaRepositorio(UcoKudosDbContext contexto) : IPersonaRep
 
     public void AgregarVerificacion(VerificacionContacto verificacion) => contexto.VerificacionesContacto.Add(verificacion);
 
+    public async Task<IReadOnlyList<(Persona Persona, AsignacionRol Rol)>> AdministradasAsync(
+        IReadOnlyCollection<short> rolesAdministrados, Guid? facultadId, Guid? programaId, string? texto, int tamano, CancellationToken ct)
+    {
+        var consulta = from persona in contexto.Personas.AsNoTracking()
+                       join asignacion in contexto.AsignacionesRol.AsNoTracking() on persona.Id equals asignacion.PersonaId
+                       where asignacion.Activa && rolesAdministrados.Contains(asignacion.RolId)
+                       select new { persona, asignacion };
+
+        if (programaId is not null)
+            consulta = consulta.Where(x => x.asignacion.ProgramaId == programaId);
+        else if (facultadId is not null)
+            consulta = consulta.Where(x => x.asignacion.FacultadId == facultadId);
+
+        if (texto is not null)
+        {
+            var minuscula = texto.ToLower();
+            consulta = consulta.Where(x => x.persona.NombreCompleto.ToLower().Contains(minuscula));
+        }
+
+        var filas = await consulta.OrderBy(x => x.persona.NombreCompleto).Take(tamano).ToListAsync(ct);
+
+        return [.. filas.Select(f => (f.persona, f.asignacion))];
+    }
+
     public async Task<IReadOnlyList<Persona>> PendientesDeAprobacionAsync(
         Guid? facultadId, Guid? programaId, CancellationToken ct)
     {

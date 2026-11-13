@@ -235,6 +235,7 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<ICategoriasPuertoEntrada, CategoriasAdaptadorEntrada>();
         servicios.AddScoped<IIdentidadPuertoEntrada, IdentidadAdaptadorEntrada>();
         servicios.AddScoped<IAcademicoPuertoEntrada, AcademicoAdaptadorEntrada>();
+        servicios.AddScoped<IUsuariosPuertoEntrada, AdministrarUsuariosCasoUso>();
         servicios.AddScoped<IInteraccionPuertoEntrada, InteraccionAdaptadorEntrada>();
         servicios.AddScoped<IModeracionPuertoEntrada, ModeracionAdaptadorEntrada>();
         servicios.AddScoped<IAuditoriaPuertoEntrada, VerificarAuditoriaCasoUso>();

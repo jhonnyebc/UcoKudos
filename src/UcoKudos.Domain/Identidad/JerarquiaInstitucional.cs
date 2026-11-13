@@ -106,6 +106,20 @@ public static class JerarquiaInstitucional
     public static bool PuedeAdministrarCategorias(AmbitoUsuario usuario) => usuario.Rol.AdministraCategorias;
 
     /// <summary>
+    /// ¿Administra este usuario a esa persona? La cadena del enunciado, literal —es la misma de las
+    /// aprobaciones—: cada rol administra a quienes aprueba, dentro de su ámbito. Nadie se administra
+    /// a sí mismo.
+    /// </summary>
+    public static bool PuedeAdministrar(
+        AmbitoUsuario usuario, Guid personaId, Rol rolDeLaPersona, Guid? facultadDeLaPersona, Guid? programaDeLaPersona) =>
+        usuario.PersonaId != personaId
+        && PuedeAprobar(usuario, rolDeLaPersona, facultadDeLaPersona, programaDeLaPersona);
+
+    /// <summary>Los roles que un rol administra: los que él aprueba, salvo que el Administrador no es su propio superior.</summary>
+    public static IReadOnlyList<Rol> RolesQueAdministra(Rol rolDelUsuario) =>
+        [.. Rol.Todos.Where(r => AprobadorDe(r) == rolDelUsuario)];
+
+    /// <summary>
     /// Ver los indicadores de gestión: desde el Coordinador de Programa hacia arriba. Docentes y
     /// estudiantes no: son una herramienta para quien gestiona, no un dato de consulta.
     /// </summary>
