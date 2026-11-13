@@ -174,6 +174,36 @@ public sealed class AlmacenObjetosRealTests(AlmacenObjetosFixture plataforma)
         await otroArranque.AsegurarContenedorPrivadoAsync(CancellationToken.None);
     }
 
+    /// <summary>
+    /// **Guardar en un almacenamiento donde el contenedor no existe lo crea, en lugar de fallar.**
+    /// Prueba de regresión del segundo defecto del primer uso real: el adaptador decía crear el
+    /// contenedor al arrancar, pero nada lo hacía, y en producción cada subida acababa en un 500
+    /// («The specified bucket does not exist»). Las demás pruebas no lo veían porque su fixture sí
+    /// llamaba a <c>AsegurarContenedorPrivadoAsync</c>: otra vez, el entorno de pruebas hacía por el
+    /// código lo que el código no hacía.
+    /// </summary>
+    [Fact]
+    public async Task Guardar_crea_el_contenedor_si_no_existe()
+    {
+        var opciones = new OpcionesObjetos
+        {
+            Proveedor = OpcionesObjetos.ProveedorS3,
+            Endpoint = plataforma.Opciones.Endpoint,
+            Contenedor = "sin-crear-" + Guid.NewGuid().ToString("N")[..8],
+            Usuario = plataforma.Opciones.Usuario,
+            Password = plataforma.Opciones.Password
+        };
+
+        using var cliente = plataforma.CrearCliente();
+        var almacen = new AlmacenObjetosCompatibleS3(opciones, cliente);
+        var clave = Clave("primer-uso");
+
+        // Sin llamar antes a AsegurarContenedorPrivadoAsync, como en producción.
+        await almacen.GuardarAsync(clave, PdfDePrueba(), CancellationToken.None);
+
+        Assert.Equal(PdfDePrueba(), await almacen.LeerAsync(clave, CancellationToken.None));
+    }
+
     private static string Clave(string nombre) => "kudos/" + Guid.NewGuid().ToString("N") + "/" + nombre;
 
     /// <summary>Un PDF mínimo: lo que importa es su firma, los cuatro primeros bytes.</summary>

@@ -41,6 +41,23 @@ public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
     {
         ArgumentNullException.ThrowIfNull(contenido);
 
+        try
+        {
+            await PonerAsync(clave, contenido, ct);
+        }
+        catch (AmazonS3Exception error) when (error.ErrorCode == "NoSuchBucket")
+        {
+            // **El contenedor no existe, y la aplicación lo crea en lugar de fallar.** Ocurrió en el
+            // primer uso real: nada lo creaba al arrancar, aunque este comentario lo daba por hecho, y
+            // cada subida terminaba en un 500. También cubre que el almacenamiento se recree y pierda
+            // sus contenedores. Crearlo es idempotente y siempre lo deja privado.
+            await AsegurarContenedorPrivadoAsync(ct);
+            await PonerAsync(clave, contenido, ct);
+        }
+    }
+
+    private async Task PonerAsync(string clave, byte[] contenido, CancellationToken ct)
+    {
         using var flujo = new MemoryStream(contenido, writable: false);
 
         await _cliente.PutObjectAsync(
@@ -97,7 +114,7 @@ public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
     /// <summary>
     /// Asegura que el contenedor existe y que **no** tiene acceso público.
     ///
-    /// Se llama al arrancar. Es la decisión central de ADR-0012: un contenedor público haría
+    /// Se llama la primera vez que hace falta (al guardar, si el contenedor no existe). Es la decisión central de ADR-0012: un contenedor público haría
     /// irrelevante todo lo demás, porque cualquiera con la URL entraría y no habría forma de trazar
     /// las descargas.
     /// </summary>

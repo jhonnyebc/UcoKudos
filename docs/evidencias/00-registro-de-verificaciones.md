@@ -563,4 +563,11 @@ interna. La tabla de verificaciones de la ruta pública (GET anónimo, listado, 
 flujo por HTTP (reservar, subir, confirmar, descargar) y comprueban autor, tipo real, tamaño,
 anónimo, identidad sin cuenta y auditoría. Ver ADR-0012, revisión del 2026-11-13.
 
+**Tercer fallo, ya con el rediseño desplegado:** la subida dio un 500 y el registro del servidor dijo
+`The specified bucket does not exist`. El adaptador afirmaba crear el contenedor «al arrancar», pero
+nada lo llamaba: con URL prefirmadas la subida nunca llegó a ejecutarse, así que no se había notado.
+Las pruebas tampoco lo veían, porque su fixture llamaba a `AsegurarContenedorPrivadoAsync` por el
+código. Corregido: `GuardarAsync` crea el contenedor (privado, idempotente) si el almacenamiento
+responde `NoSuchBucket`, y hay una prueba que guarda contra un contenedor que no existe.
+
 **Pendiente de registrar:** la subida real desde el celular tras el despliegue.
