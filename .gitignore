@@ -503,3 +503,6 @@ coverage/
 
 # Artefactos de las compilaciones en contenedor y en el CI
 artefactos/
+
+# Salidas de error sueltas de ejecuciones locales
+*.err

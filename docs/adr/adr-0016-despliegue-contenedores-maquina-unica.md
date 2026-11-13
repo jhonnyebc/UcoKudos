@@ -118,6 +118,24 @@ El punto 2 de esta decisión dice **«capa gratuita permanente, no crédito inic
 
 **Sobre el nombre de dominio.** No se compró uno: se usa un servicio de DNS comodín que resuelve `kudos.<IP>.sslip.io` a la máquina, suficiente para un certificado emitido por una autoridad real. Si el proyecto siguiera, un dominio propio es un cambio de una línea en la configuración.
 
+## Revisión del 2026-11-13 — qué es y qué no es el «despliegue automatizado»
+
+RT-04 pedía un pipeline de despliegue automatizado, y este ADR lo daba por cubierto. **Hay que
+decirlo con precisión**, porque la expresión se queda corta:
+
+- **Automatizado por el pipeline:** construir la imagen, escanearla con Trivy y **publicarla**
+  en el registro con la etiqueta de versión y commit, solo desde `main` y solo si pasaron todas las
+  puertas. Eso es lo que hace el CI en cada cambio.
+- **No automatizado por el pipeline:** el despliegue en la máquina. Lo hace `scripts/desplegar.sh`,
+  que **se ejecuta a mano por SSH** con las dos etiquetas: trae las imágenes, aplica las migraciones,
+  arranca la versión nueva, recarga el proxy y comprueba que responde. Es un solo comando y es
+  repetible, pero no lo dispara ningún evento de GitHub.
+
+La razón fue de riesgo y no de pereza: un despliegue disparado por el pipeline exige guardar en
+GitHub una llave SSH de la máquina, y en la semana de la entrega pesó más no dejar un secreto con
+acceso al servidor en un tercero. **El paso que falta** es un trabajo del flujo que, tras publicar,
+se conecte por SSH y ejecute ese mismo guion; el guion ya está hecho para que ese cambio sea pequeño.
+
 ## Referencias
 
 - Docker Inc. *Compose specification.*

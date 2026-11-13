@@ -45,6 +45,8 @@ El trabajo que publica la imagen, y la ejecución del guion de despliegue con su
 
 En la máquina: `./scripts/desplegar.sh <etiqueta-api> <etiqueta-web>`
 
+**Con una precisión que hay que decir:** lo que dispara el pipeline es la **publicación** de la imagen escaneada; el despliegue en la máquina es ese guion, ejecutado a mano por SSH (ver la revisión del 2026-11-13 de ADR-0016).
+
 **Qué impide:** desplegar algo distinto de lo que pasó las puertas de calidad, y dirigir tráfico a una versión cuyas migraciones no se aplicaron.
 
 ### 3. Sonar

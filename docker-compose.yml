@@ -37,12 +37,13 @@ services:
   # contra lo mismo (factor X de los doce). El almacenamiento de producción se decide en la Fase 4,
   # con el despliegue.
   #
-  # Se eligió esta y no otra por una razón concreta: comprueba las firmas y hace cumplir la
-  # caducidad de las URL prefirmadas. La alternativa que se probó primero servía cualquier objeto sin
-  # firma, de modo que las pruebas de seguridad de los adjuntos no habrían comprobado nada.
+  # Ojo con lo que NO hace: ya no hay URL prefirmadas (ADR-0012, revisión del 2026-11-13). Los
+  # archivos pasan por la API, que habla con este servicio por la red interna, y el servicio no
+  # publica ningún puerto en producción. Además valida las firmas con un secreto fijo y público, que
+  # es justamente la razón por la que las URL prefirmadas fallaron en el primer uso real.
   #
-  # El contenedor de adjuntos no se crea aquí: lo crea la aplicación al arrancar, y así queda uno
-  # solo creándolo, de la misma forma en local y en el servidor.
+  # El contenedor de adjuntos no se crea aquí: lo crea la aplicación la primera vez que guarda un
+  # archivo (y de nuevo si el servicio pierde sus datos), igual en local y en el servidor.
   objetos:
     image: localstack/localstack:4.9
     container_name: ucokudos-objetos

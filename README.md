@@ -13,7 +13,7 @@ Plataforma institucional de reconocimientos de la Universidad Católica de Orien
 | `src/UcoKudos.Infrastructure` | Adaptadores de salida: persistencia, correo, WhatsApp, push, objetos |
 | `src/UcoKudos.Api` | API HTTP. Conoce puertos de entrada y DTO |
 | `tests/UcoKudos.UnitTests` | Base de la pirámide: dominio y casos de uso, sin infraestructura |
-| `tests/UcoKudos.ArchitectureTests` | Las cinco reglas de dependencia de ADR-0001, verificadas |
+| `tests/UcoKudos.ArchitectureTests` | Las reglas 1 a 4 de dependencia de ADR-0001, verificadas (la regla 5 no tiene prueba automatizada) |
 | `tests/UcoKudos.IntegrationTests` | Contra PostgreSQL y almacenamiento reales en contenedores desechables |
 | `docs/` | Documentación de la entrega: DAS, 19 ADR, drivers, ABB y SBB, 21 diagramas y los análisis. Empezar por [docs/DAS.md](docs/DAS.md) |
 
