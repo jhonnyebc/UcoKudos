@@ -607,3 +607,25 @@ se envió; (3) vetar no resolvía los reportes pendientes. Los tres los encontra
 **Calidad:** la puerta de Sonar falló dos veces (19,9 % y 72,4 % de cobertura sobre código nuevo)
 porque Sonar solo recibe las pruebas unitarias; se resolvió escribiendo pruebas unitarias de los
 casos de uso (87,3 %), sin tocar el umbral.
+
+## 2026-11-13 — Calificaciones y respuestas anidadas, verificadas en producción
+
+Contra el sistema desplegado (api `0.1.0-cef3075`, web `0.1.0-9b4e947`): se calificó un Kudo con las
+estrellas (el promedio se actualizó, y un cambio de calificación no subió el total), y se respondió
+a un Kudo y a una respuesta, con el hilo en sangría; se calificó, reportó y vetó una respuesta con
+otra debajo, y desaparecieron las dos.
+
+**Defectos encontrados antes de desplegar:** calificar un contenido vetado movía promedios de algo
+que nadie ve; responder a una respuesta vetada dejaba una respuesta colgando de algo oculto. Ambos se
+rechazan ahora y tienen su prueba.
+
+## 2026-11-13 — Revisión del documento de arquitectura contra lo desplegado
+
+Se leyó el DAS entero y se contrastó con el código, las pruebas y la producción. Lo que no resistió
+y se corrigió: la lista de «doce puertas, todas bloqueantes» (incluía un «contrato al día» que no
+existe como puerta, y dos de las puertas no bloquean); la afirmación de que las pruebas de punta a
+punta corren en un navegador (son por HTTP); la prueba de carga presentada como una verificación
+hecha (no se hizo); el patrón Valet Key y los diagramas de adjuntos, que describían la versión de URL
+prefirmadas ya abandonada; la regla 5 de arquitectura, que se decía verificada y no tiene prueba; el
+recuento de ADR, diagramas y documentos de análisis; y la tabla de riesgos, cuyo estado era el de la
+primera semana. La pirámide de pruebas decía 3 unitarias y 0 de integración y de punta a punta.

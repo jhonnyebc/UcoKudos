@@ -75,7 +75,7 @@ Formato: estímulo, entorno, respuesta y medida.
 | **QA-CONF-02** | El mismo evento se procesa dos veces por un reintento | El destinatario recibe **un** correo y **un** WhatsApp: deduplicación por identificador de evento |
 | **QA-DISP-01** | La Graph API de Meta responde 503 al publicar un Kudo | El Kudo queda publicado y auditado; el WhatsApp se reintenta con espera creciente y, si agota intentos, queda registrado el fallo |
 | **QA-SEG-01** | Un Coordinador de Programa intenta crear una categoría | La plataforma responde 403 y el intento queda auditado |
-| **QA-SEG-02** | Alguien con la URL de un adjunto intenta abrirla una semana después | El enlace está vencido: los adjuntos solo se sirven con URL prefirmada de vida corta |
+| **QA-SEG-02** | Alguien sin sesión, o sin cuenta activa, intenta obtener un adjunto, o lo intenta con un enlace que le pasaron | No hay enlace que valga: el archivo solo sale por la API, con sesión y cuenta activa, y cada descarga queda auditada. *(Reformulado el 2026-11-13: el escenario original suponía URL prefirmadas de vida corta, que se abandonaron.)* |
 | **QA-SEG-03** | Se intenta registrar un segundo Rector activo | La plataforma lo rechaza por invariante, no por validación de interfaz |
 | **QA-OBS-01** | Hay que explicar qué pasó en una publicación concreta de hace dos días | Se reconstruye el flujo completo con un solo identificador de correlación: traza, logs y eventos de auditoría |
 | **QA-MANT-01** | Hay que cambiar el proveedor de correo | Se implementa un adaptador nuevo del puerto de salida; el dominio y los casos de uso no cambian |
@@ -112,6 +112,6 @@ Formato: estímulo, entorno, respuesta y medida.
 | DRV-002 Lectura masiva | ADR-0010 (CQRS ligero y caché), ADR-0011 (árbol de réplicas), ADR-0003 (índices) |
 | DRV-003 Multicanal | ADR-0006 (gateway), ADR-0007 (WhatsApp), ADR-0008 (correo), ADR-0009 (push) |
 | DRV-004 Adjuntos | ADR-0012 (almacenamiento de objetos) |
-| DRV-005 Seguridad | ADR-0004 (identidad), ADR-0018 (secretos), ADR-0012 (URL prefirmada), ADR-0017 (escaneos) |
+| DRV-005 Seguridad | ADR-0004 (identidad), ADR-0018 (secretos), ADR-0012 (archivos por la API), ADR-0017 (escaneos) |
 | DRV-006 Observabilidad | ADR-0013 (auditoría), ADR-0014 (OpenTelemetry) |
 | DRV-007 Automatización | ADR-0017 (quality gates), ADR-0016 (despliegue) |

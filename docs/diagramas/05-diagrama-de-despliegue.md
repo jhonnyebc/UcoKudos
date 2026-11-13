@@ -34,7 +34,6 @@ flowchart TB
 
     pwa -->|"HTTPS 443"| caddy
     pwa -->|"OIDC + PKCE"| identidad
-    pwa -->|"PUT con URL prefirmada"| s3
 
     caddy -->|"HTTP, red interna"| api
     api -->|"TCP, red interna"| pg

@@ -18,8 +18,8 @@ sequenceDiagram
     participant BD as PostgreSQL
 
     Autor->>PWA: Escribe el Kudo y elige categoría
-    Note over PWA,API: El adjunto ya se subió aparte<br/>con URL prefirmada (ver secuencia 4)
-    PWA->>API: POST /api/kudos<br/>{destinatario, categoria, contenido, adjuntos}
+    Note over PWA,API: Los adjuntos van DESPUÉS: necesitan que el Kudo<br/>ya exista (ver secuencia 4)
+    PWA->>API: POST /api/kudos<br/>{destinatario, categoria, contenido}
     API->>API: Valida el token JWT y genera<br/>el id de correlación
     API->>CU: EjecutarAsync(datos, ct)
 
@@ -229,51 +229,52 @@ Cuando alguien publica un Kudo, el evento de ADR-0005 **invalida la primera pág
 
 ## 4. Cargar un adjunto
 
-Responde a RF-08 y DRV-004, y muestra las cuatro estrategias de ADR-0012 en movimiento.
+Responde a RF-08 y DRV-004, y muestra las cuatro estrategias de ADR-0012 en movimiento. **Revisada el 2026-11-13:** el archivo pasa por la API en las dos direcciones; la versión anterior de este diagrama usaba URL prefirmadas y falló en el primer uso real (ver ADR-0012).
 
 ```mermaid
 sequenceDiagram
     autonumber
     actor Autor as Docente
     participant PWA as Cliente web
-    participant API as Endpoint /api/adjuntos
-    participant CU as CargarAdjuntoCasoUso
+    participant API as API
+    participant CU as AdjuntosCasosUso
     participant Obj as Adaptador de objetos
     participant S3 as Almacenamiento (privado)
     participant BD as PostgreSQL
 
     Autor->>PWA: Elige un archivo
     PWA->>PWA: Comprueba tipo y tamaño<br/>(por comodidad, la API lo repite)
-    PWA->>API: POST /api/adjuntos/intencion<br/>{nombre, tipo, tamaño}
+    PWA->>API: POST /api/kudos/{id}/adjuntos/intencion<br/>{nombre, tipo, tamaño} con la sesión
 
-    API->>CU: EjecutarAsync(datos)
-    CU->>CU: Valida contra lista blanca de tipos,<br/>tamaño máximo y cantidad por Kudo
+    API->>CU: PrepararSubidaAsync
+    CU->>CU: Solo el autor del Kudo.<br/>Valida lista blanca de tipos,<br/>tamaño máximo y cantidad por Kudo
     CU->>CU: Genera la clave del objeto
     Note over CU: Clave generada, NO el nombre del usuario:<br/>un nombre que controla quien sube el archivo<br/>es un vector de recorrido de rutas
-    CU->>Obj: UrlDeSubida(clave, minutos)
-    Obj-->>CU: URL prefirmada de subida
     CU->>BD: INSERT adjunto (metadatos, sin confirmar)
-    CU-->>API: {urlSubida, idAdjunto}
+    CU-->>API: idAdjunto
     API-->>PWA: 200 OK
 
-    PWA->>S3: PUT el archivo directo a la URL prefirmada
-    Note over PWA,S3: Los megabytes NO atraviesan la API:<br/>menos carga y menos latencia en red móvil
-    S3-->>PWA: 200 OK
+    PWA->>API: PUT /api/kudos/{id}/adjuntos/{adjunto}/contenido<br/>el archivo como cuerpo, con la sesión
+    API->>CU: GuardarContenidoAsync
+    CU->>CU: Lee el cuerpo acotando a 5 MiB mientras lee
+    Note over CU: El tamaño se acota al leer, no solo por lo<br/>que declaró el cliente: quien declara 1 KB<br/>puede mandar 1 GB
+    CU->>Obj: GuardarAsync(clave, contenido)
+    Obj->>S3: PUT objeto, por la red interna
+    API-->>PWA: 204
 
-    PWA->>API: POST /api/adjuntos/{id}/confirmar
-    API->>Obj: Lee los primeros bytes del objeto
-    Obj->>S3: GET parcial
-    S3-->>Obj: Cabecera del archivo
-    Obj-->>API: Tipo real detectado
-    API->>API: ¿Coincide con la lista blanca?
-    Note over API: El tipo se determina por el CONTENIDO,<br/>no por la extensión ni por lo que<br/>declaró el cliente: las dos las controla<br/>quien sube el archivo
-    API->>Obj: Calcula el hash del contenido
-    Obj-->>API: Hash
-    API->>BD: UPDATE adjunto (tipo, hash, confirmado)
-    API->>BD: INSERT evento_auditoria (adjunto.cargar)
-    API-->>PWA: 200 OK
+    PWA->>API: POST /api/kudos/{id}/adjuntos/{adjunto}/confirmar
+    API->>CU: ConfirmarSubidaAsync
+    CU->>Obj: InspeccionarAsync(clave)
+    Obj->>S3: GET objeto
+    S3-->>Obj: Contenido
+    Obj-->>CU: Tipo real, tamaño y hash
+    CU->>CU: ¿Coincide con la lista blanca?
+    Note over CU: El tipo se determina por el CONTENIDO,<br/>no por la extensión ni por lo que<br/>declaró el cliente: las dos las controla<br/>quien sube el archivo
+    CU->>BD: UPDATE adjunto (tipo, hash, confirmado)
+    CU->>BD: INSERT evento_auditoria (adjunto.cargar)
+    API-->>PWA: 204
 
-    Note over Autor,BD: Descargar después exige otra URL prefirmada,<br/>emitida tras comprobar permisos, y vence en<br/>minutos (QA-SEG-02). Cada descarga se audita.
+    Note over Autor,BD: Descargar es GET /api/kudos/{id}/adjuntos/{adjunto}/archivo,<br/>con la sesión: se comprueba la cuenta, se rechaza si el Kudo<br/>está vetado y cada descarga se audita (adjunto.descargar).<br/>No hay enlace que filtrar ni que caduque.
 ```
 
 ## 5. Aprobar una solicitud de cuenta

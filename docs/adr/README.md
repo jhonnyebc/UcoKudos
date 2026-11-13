@@ -23,7 +23,7 @@ El vocabulario que los ADR referencian —drivers `DRV-`, requisitos `RF-`, esce
 | [ADR-0009](adr-0009-tiempo-real-sse-web-push.md) | SSE para usuarios conectados y Web Push (VAPID) para los desconectados | Accepted |
 | [ADR-0010](adr-0010-lectura-masiva-cqrs-cache.md) | CQRS ligero, contadores materializados, caché por evento y paginación por cursor | Accepted |
 | [ADR-0011](adr-0011-arbol-replicas-ruta-materializada.md) | Árbol de réplicas con referencia al padre y ruta materializada | Accepted |
-| [ADR-0012](adr-0012-adjuntos-almacenamiento-objetos.md) | Adjuntos en almacenamiento de objetos privado con URL prefirmada | Accepted |
+| [ADR-0012](adr-0012-adjuntos-almacenamiento-objetos.md) | Adjuntos en almacenamiento de objetos privado, servidos por la API (revisado el 2026-11-13) | Accepted |
 | [ADR-0013](adr-0013-auditoria-cadena-hashes.md) | Auditoría de solo inserción con cadena de hashes verificable | Accepted |
 | [ADR-0014](adr-0014-observabilidad-opentelemetry.md) | OpenTelemetry con la traza propagada a través de la frontera asíncrona | Accepted |
 | [ADR-0015](adr-0015-pwa-mobile-first-react.md) | Cliente como PWA mobile first en React con TypeScript | Accepted |

@@ -65,10 +65,10 @@ Al integrar en la rama principal, y solo si todas las puertas pasaron: se public
 |---|---|---|
 | **Unitarias** (base) | Invariantes del dominio, jerarquía de roles, reglas de las categorías, cálculo de la ruta de réplicas, casos de uso con puertos simulados | Nada externo: sin base de datos ni red |
 | **Arquitectura** | Las reglas de dependencia de ADR-0001 | Los ensamblados compilados |
-| **Integración** | Repositorios, consultas escritas a mano, índices únicos, el Outbox con su bloqueo, las URL prefirmadas y su expiración, la cadena de auditoría | PostgreSQL y almacenamiento reales en contenedores desechables |
-| **Punta a punta** (cima) | Iniciar sesión, publicar un Kudo con adjunto y comprobar que se registran los tres envíos y la auditoría | La aplicación completa en un navegador |
+| **Integración** | Repositorios, consultas escritas a mano, índices únicos, el Outbox con su bloqueo, el guardado y la lectura de archivos en el almacenamiento real, la cadena de auditoría | PostgreSQL y almacenamiento reales en contenedores desechables |
+| **Punta a punta** (cima) | Publicar un Kudo, adjuntar un archivo y comprobar que se registran los tres envíos y la auditoría, y los flujos de cuentas, interacción y moderación | La API completa **por HTTP** (no hay navegador de por medio; ver la pirámide de pruebas) |
 
-Las tres pruebas que **no son negociables**, porque son la evidencia de los escenarios más delicados: que un reproceso no duplique notificaciones (QA-CONF-02), que una URL prefirmada expirada sea rechazada (QA-SEG-02) y que el segundo Rector activo sea imposible (QA-SEG-03).
+Las tres pruebas que **no son negociables**, porque son la evidencia de los escenarios más delicados: que un reproceso no duplique notificaciones (QA-CONF-02), que un adjunto no se entregue sin sesión ni cuenta activa (QA-SEG-02) y que el segundo Rector activo sea imposible (QA-SEG-03).
 
 ## Alternativas consideradas
 

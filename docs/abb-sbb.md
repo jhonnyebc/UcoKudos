@@ -208,7 +208,7 @@ Evaluación según los seis criterios del enunciado.
 | ABB-08c Push | SSE + Web Push con VAPID | Firebase Cloud Messaging | ADR-0009 |
 | ABB-09 Mensajería | Bandeja de salida en PostgreSQL | RabbitMQ o Kafka | ADR-0005 |
 | ABB-10 Persistencia | PostgreSQL con mapeo explícito | MongoDB; dominio anotado | ADR-0003 |
-| ABB-11 Documental | Compatible con S3, privado, URL prefirmada | Columna binaria en la base | ADR-0012 |
+| ABB-11 Documental | Compatible con S3, privado, servido por la API (sin URL prefirmada: revisado el 2026-11-13) | Columna binaria en la base | ADR-0012 |
 | ABB-12 Caché y lectura | CQRS ligero, contadores, caché por evento | CQRS con base separada | ADR-0010 |
 | ABB-13 Auditoría | Solo inserción con cadena de hashes | Historial automático del ORM | ADR-0013 |
 | ABB-14 Observabilidad | OpenTelemetry, recolector autoalojado | Plataforma gestionada | ADR-0014 |

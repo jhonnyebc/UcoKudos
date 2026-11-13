@@ -92,13 +92,14 @@ El enunciado es explícito: **no se evalúa la cantidad de patrones**, sino su p
 | **Beneficio** | Leer un hilo de cualquier profundidad es **una** consulta, el orden por ruta ya es el orden anidado de presentación, y vetar en cascada es una operación |
 | **Contrapartida declarada** | La ruta es derivada y puede quedar inconsistente con el padre. Se calcula en un solo lugar y se verifica con una prueba (ADR-0011) |
 
-### Valet Key (URL prefirmada)
+### Valet Key (URL prefirmada) — implementado y abandonado
 
 | | |
 |---|---|
 | **Problema** | Servir adjuntos privados sin que los megabytes atraviesen la API ni exponer las credenciales del almacenamiento |
-| **Aplicación** | La API comprueba permisos y **entonces** emite una URL firmada de vida corta. El cliente sube y baja directo |
-| **Beneficio** | La autorización se queda donde está el conocimiento de la jerarquía, y la transferencia no pasa por la aplicación, que importa en red móvil |
+| **Aplicación original** | La API comprobaba permisos y **entonces** emitía una URL firmada de vida corta. El cliente subía y bajaba directo |
+| **Por qué se abandonó** | Falló con un 403 en el primer uso real (2026-11-13): el servidor de objetos valida las firmas con un secreto fijo y público, y las pruebas compartían esa misma suposición, así que no podían verlo. Firmar con un secreto de verdad hacía rechazar todo; firmar con el público habría dejado a cualquiera fabricar firmas válidas |
+| **Lo que hay hoy** | Los archivos pasan por la API, con la sesión de quien actúa. Cuesta hasta 5 MiB por archivo que cruzan la aplicación, y a cambio la autorización y la auditoría ocurren en cada subida y en cada descarga, y el almacenamiento no tiene ruta pública (ADR-0012, revisión del 2026-11-13) |
 
 ### Specification (ligero), en las reglas de moderación
 
@@ -225,6 +226,6 @@ La última es la importante. «Bajo acoplamiento» es una afirmación que cualqu
 | Ports and Adapters | La estructura de `UcoKudos.Application/<modulo>/{Entrada,Salida}` |
 | Cache-Aside, Materialized View | `UcoKudos.Application/Lectura`, `UcoKudos.Infrastructure/Lectura` |
 | Materialized Path | `UcoKudos.Domain/Interaccion/RutaReplica` |
-| Valet Key | `UcoKudos.Infrastructure/Objetos` |
+| Archivos por la API (antes Valet Key) | `UcoKudos.Application/Kudos/CasosUso/AdjuntosCasosUso`, `UcoKudos.Infrastructure/Objetos` |
 | SOLID verificado | `tests/UcoKudos.ArchitectureTests` |
 | Clean Code verificado | `.editorconfig`, `Directory.Build.props` y el pipeline |

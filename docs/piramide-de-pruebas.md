@@ -73,12 +73,12 @@ Prueban lo que **solo se puede probar contra la infraestructura de verdad**, en 
 | **Idempotencia de las notificaciones** (QA-CONF-02) | El índice único sobre evento, destinatario y canal es lo que la garantiza |
 | **Recuperación tras la muerte del proceso** (QA-CONF-01) | Se mata el proceso entre el commit y el envío, y al reiniciar el aviso debe salir **una** vez |
 | **La cadena de hashes de la auditoría** | El motor trunca la precisión de la fecha y reordena las claves del JSON. Sin probarlo contra la base real, la verificación fallaría al releer aunque nada se hubiera alterado |
-| **URL prefirmada y su expiración** (QA-SEG-02) | La firma y el vencimiento los implementa el almacenamiento |
+| **Guardar, leer e inspeccionar un archivo** (ADR-0012) | El tipo se detecta por el contenido real y no por la extensión, los archivos binarios vuelven byte por byte y crear el contenedor es idempotente: un doble en memoria no lo comprobaría. Esta suite sustituyó a la de URL prefirmadas, que pasaba y no veía el 403 de producción |
 | **La ruta de réplicas y el veto en cascada** | La búsqueda por prefijo depende del índice y del ordenamiento de texto |
 | **Los contadores materializados** | Una consulta de verificación los compara con el valor real sobre un árbol sembrado |
 | **La autorización de la API** | Que un Coordinador de Programa reciba 403 al crear una categoría se prueba con la aplicación levantada |
 
-**Las pruebas negativas son las que importan aquí.** La prueba de seguridad de los adjuntos no es que la descarga funcione, sino que **falle**: pedir el objeto sin firma debe ser rechazado, y una URL expirada también. Sin esas dos, la estrategia de seguridad de ADR-0012 es una afirmación.
+**Las pruebas negativas son las que importan aquí.** La prueba de seguridad de los adjuntos no es que la descarga funcione, sino que **falle**: sin identidad, sin cuenta activa, para quien no es el autor, con un Kudo vetado y con un contenido que no es del tipo declarado. Están como escenarios de punta a punta.
 
 **Trampa conocida del pipeline:** toda clase de este proyecto debe llevar la marca de categoría o el CI **no la ejecuta** y el pipeline sigue en verde sin haberla corrido. Es el fallo más peligroso porque no se ve.
 
@@ -138,24 +138,25 @@ Es la tabla que hay que poder mostrar: ningún escenario de calidad debería que
 | QA-CONF-02 Un reproceso no duplica | Integración | Reproceso del mismo evento; el índice único lo impide |
 | QA-DISP-01 Meta caída no impide publicar | Integración | Adaptador que devuelve 503; el Kudo queda publicado |
 | QA-SEG-01 Coordinador de Programa recibe 403 | Integración | Autorización de la API, con auditoría del intento |
-| QA-SEG-02 URL de adjunto vencida | Integración | **Prueba negativa**: la descarga debe fallar |
+| QA-SEG-02 Acceso a un adjunto sin sesión o sin cuenta | Punta a punta | **Prueba negativa**: la descarga debe fallar |
 | QA-SEG-03 Segundo Rector activo imposible | Integración | Índice único parcial, con dos intentos simultáneos |
 | QA-OBS-01 Reconstruir una publicación | Manual, con evidencia | Publicar, tomar el identificador de traza y encontrar petición, transacción, evento y envíos en una sola vista |
 | QA-MANT-01 Cambiar de proveedor | Arquitectura + integración | Las reglas de dependencia, y los tres adaptadores sustituibles del puerto de correo |
 | QA-ELAS-01 Dos instancias no duplican | Integración | Dos procesos compitiendo por la misma cola |
 
-**Las tres pruebas no negociables**, porque son la evidencia de los escenarios más delicados: que un reproceso no duplique notificaciones (QA-CONF-02), que una URL prefirmada expirada sea rechazada (QA-SEG-02) y que el segundo Rector activo sea imposible (QA-SEG-03).
+**Las tres pruebas no negociables**, porque son la evidencia de los escenarios más delicados: que un reproceso no duplique notificaciones (QA-CONF-02), que un adjunto no se entregue sin sesión ni cuenta activa (QA-SEG-02) y que el segundo Rector activo sea imposible (QA-SEG-03).
 
 ## 6. Estado actual
 
 | Nivel | Pruebas | Estado |
 |---|---|---|
-| Unitarias | 3 | La jerarquía de excepciones. Crecen con el dominio |
-| Arquitectura | 6 | **Las cinco reglas de ADR-0001, con la regla 4 verificada provocando una violación** |
-| Integración | 0 | El proyecto está preparado y el camino al socket de Docker resuelto; no hay ninguna escrita |
-| Punta a punta | 0 | Pendiente; llega con el flujo de RF-07 |
+| Unitarias | 199 | Dominio y, desde el 2026-11-13, los casos de uso con dobles. Son las que recibe Sonar |
+| Arquitectura | 6 | Las reglas 1 a 4 de ADR-0001, con la regla 4 verificada provocando una violación. **La regla 5 no tiene prueba automatizada** |
+| Integración | 59 | Contra PostgreSQL y un almacenamiento de objetos reales |
+| Punta a punta | 93 | La API completa por HTTP: publicar con sus cinco efectos, adjuntos, categorías, registro y aprobación, réplicas, calificaciones, reportar y vetar |
+| Cliente web | 137 | Componentes y utilidades, con comprobación de accesibilidad |
 
-Lo honesto es decir que hoy la pirámide tiene la base y el nivel de arquitectura, y que los dos niveles superiores llegan con la funcionalidad. El andamiaje de los cuatro ya está en pie, que es lo que evita que las pruebas se dejen para el final.
+Todas corren en el pipeline. Lo que **no** hay es una prueba de carga con percentiles ni un escenario dirigido desde un navegador (declarado abajo).
 
 ---
 

@@ -174,15 +174,14 @@ Es el punto con más superficie, y ADR-0012 lo desarrolla. Resumen de las decisi
 | Medida | Por qué |
 |---|---|
 | **Contenedor privado**, sin lectura anónima | Es la decisión central. Un contenedor público haría irrelevante todo lo demás |
-| **URL prefirmada de vida corta**, emitida tras comprobar permisos | La autorización la hace la plataforma, que conoce la jerarquía; el almacenamiento solo honra una firma |
-| El enlace **vence en minutos** | Compartirlo fuera no da acceso permanente (QA-SEG-02) |
+| **Los archivos pasan por la API, con la sesión** de quien sube o descarga; el almacenamiento no tiene ninguna ruta pública | La autorización la hace la plataforma, que conoce la jerarquía, en cada subida y en cada descarga. No hay enlace que compartir ni que caduque: quien no tiene sesión y cuenta activa no obtiene el archivo (QA-SEG-02). La versión anterior usaba URL prefirmadas y falló en el primer uso real (ADR-0012, revisión del 2026-11-13) |
 | **Tipo determinado por el contenido real**, no por la extensión ni por lo que declare el cliente | Las dos las controla quien sube el archivo |
 | Lista blanca de tipos, tamaño máximo y cantidad por Kudo | Contención de abuso |
 | **Nombre del objeto generado**, no el del usuario | Evita recorrido de rutas y colisiones |
 | **Hash del contenido** guardado | Verificación de integridad al restaurar |
 | Carga y **descarga** auditadas | Responde «quién vio qué archivo y cuándo» |
 
-**La prueba que hay que escribir no es que la descarga funcione, sino que falle:** pedir el objeto sin firma debe ser rechazado, y una URL expirada también. Sin esas dos pruebas, la estrategia de seguridad es una afirmación.
+**La prueba que hay que escribir no es que la descarga funcione, sino que falle:** sin identidad es un 401, sin cuenta activa un 403, un Kudo vetado no entrega sus adjuntos, un archivo cuyo contenido no es del tipo declarado se rechaza al confirmar, y el contenido de un adjunto ya confirmado no se puede reemplazar. Todas están escritas como escenarios de punta a punta.
 
 ## 8. Seguridad en el ciclo de desarrollo
 
@@ -206,7 +205,7 @@ La seguridad no es una revisión al final (DRV-007). Las puertas del pipeline qu
 | # | Riesgo | Probabilidad | Impacto | Mitigación | Residual |
 |---|---|---|---|---|---|
 | R-01 | Un secreto llega al repositorio | Media | Alto | Doble escaneo; sin valores por omisión; `.env` ignorado | Bajo |
-| R-02 | Acceso a un adjunto sin autorización | Media | Alto | Contenedor privado; URL firmada de vida corta tras comprobar permisos; pruebas negativas | Bajo |
+| R-02 | Acceso a un adjunto sin autorización | Media | Alto | Contenedor privado sin ruta pública; el archivo solo sale por la API, con sesión y cuenta activa; pruebas negativas | Bajo |
 | R-03 | Escalada de privilegios por un hueco de la jerarquía | Media | Alto | Reglas en un servicio de dominio probado; invariantes también en la base; intentos rechazados auditados | Medio |
 | R-04 | Dos roles únicos activos por concurrencia | Baja | Alto | Índices únicos parciales | Muy bajo |
 | R-05 | Robo de token desde el navegador | Baja | Alto | Tokens en memoria, nunca en almacenamiento local; HTTPS | Bajo |

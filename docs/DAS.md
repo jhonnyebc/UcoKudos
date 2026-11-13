@@ -6,7 +6,7 @@
 **Docente:** Wider Farid Sánchez Garzón
 Rionegro, Antioquia — noviembre de 2026
 
-Versión 1.0
+Versión 1.1 — **revisada el 2026-11-13 contra el sistema desplegado**: las afirmaciones que se pueden comprobar se contrastaron con el código, las pruebas y la producción, y lo que no resistió se corrigió o se declaró.
 
 ---
 
@@ -249,7 +249,7 @@ Esta es la tabla que distingue una arquitectura declarada de una verificada:
 |---|---|
 | 1, 2, 3 | **El compilador**, porque cada capa es un proyecto y las referencias van en un sentido. Las pruebas las guardan para que nadie añada una referencia en sentido contrario |
 | **4** | **Solo la prueba de arquitectura.** La API referencia la infraestructura para su raíz de composición, así que el compilador lo permite |
-| 5 | La prueba de arquitectura, cuando haya más de un módulo |
+| 5 | **Hoy nadie la hace cumplir automáticamente.** La prueba de arquitectura la cubriría, pero no está escrita: hay cinco módulos (Kudos, Identidad, Interacción, Moderación y Notificaciones) y la regla se sostiene por convención y por revisión. Declararlo es más defendible que decir que está verificada |
 
 **La regla 4 se verificó provocando a propósito una violación:** se añadió un uso de la infraestructura fuera de la raíz de composición, falló solo esa prueba y volvió a verde al retirarlo. Una regla que nunca ha fallado no está verificada.
 
@@ -321,9 +321,8 @@ El enunciado dice que no se evalúa la cantidad, así que la lista va con el pro
 | Cache-Aside | Carga predominantemente de lectura |
 | Materialized View | Contadores sin agregar en cada lectura |
 | Materialized Path | Árbol de réplicas sin límite, leído completo con frecuencia |
-| Valet Key | Adjuntos privados sin que los bytes pasen por la API |
 
-**Y siete descartados**, que dicen más del criterio: CQRS completo con base separada, Event Sourcing, Saga, Specification componible, Decorator para reintentos, Singleton y Factory abstracta. Las razones están en el documento.
+**Y ocho descartados**, que dicen más del criterio: CQRS completo con base separada, Event Sourcing, Saga, Specification componible, Decorator para reintentos, Singleton, Factory abstracta y **Valet Key**. Este último merece contarse: era el patrón elegido para los adjuntos (URL prefirmada, los bytes sin pasar por la API) y se **implementó y se abandonó** el 2026-11-13 tras fallar con un 403 en el primer uso real, porque el servidor de objetos valida las firmas con un secreto fijo y público. Hoy los archivos pasan por la API con la sesión de quien actúa (ADR-0012, revisión del 2026-11-13).
 
 ### 10.2 SOLID
 
@@ -364,13 +363,13 @@ Detalle completo, con la trazabilidad de cada escenario de calidad a su prueba, 
 | **Unitarias** | ¿La regla de negocio es correcta? | Nada externo |
 | **Arquitectura** | ¿Sigue siendo Clean Architecture? | Los ensamblados compilados |
 | **Integración** | ¿Funciona contra la infraestructura? | PostgreSQL y almacenamiento **reales**, en contenedores desechables |
-| **Punta a punta** | ¿Funciona de verdad? | La aplicación completa en un navegador |
+| **Punta a punta** | ¿Funciona de verdad? | La API completa levantada y atendida **por HTTP**, contra PostgreSQL real y los tres canales simulados. **No hay un navegador de por medio**: ver la nota de la sección 16.5 |
 
-**Por qué contra infraestructura real y no contra dobles:** una base en memoria no reproduce un índice único parcial, ni el comportamiento de `SKIP LOCKED`, ni la expiración de una URL firmada, ni el truncamiento de precisión que haría fallar la verificación de la cadena de hashes. Es justo lo que hay que verificar.
+**Por qué contra infraestructura real y no contra dobles:** una base en memoria no reproduce un índice único parcial, ni el comportamiento de `SKIP LOCKED`, ni el comportamiento de un servidor de objetos real al guardar y leer, ni el truncamiento de precisión que haría fallar la verificación de la cadena de hashes. Es justo lo que hay que verificar.
 
 **Las pruebas negativas son las que importan** en seguridad: la prueba de los adjuntos no es que la descarga funcione, sino que **falle** sin identidad, sin cuenta, para quien no es el autor y con un contenido que no es del tipo declarado.
 
-**Dos verificaciones fuera de la pirámide**, sin las cuales dos escenarios quedarían sin evidencia: una prueba de carga con percentiles (QA-REND-01 y QA-REND-02) y una prueba de restauración del respaldo de la base **y** del volumen de objetos juntos.
+**Dos verificaciones fuera de la pirámide**, sin las cuales dos escenarios quedarían sin evidencia. La **restauración del respaldo** de la base y del volumen de objetos **está hecha y comprobada** (2026-11-12, sobre una base aparte, con los recuentos cuadrando). La **prueba de carga con percentiles** (QA-REND-01 y QA-REND-02) **no se hizo**, y los umbrales siguen siendo objetivos de diseño y no resultados medidos (ver 16.5).
 
 ---
 
@@ -378,11 +377,13 @@ Detalle completo, con la trazabilidad de cada escenario de calidad a su prueba, 
 
 Razonamiento en [ADR-0017](adr/adr-0017-devsecops-quality-gates.md) y [ADR-0016](adr/adr-0016-despliegue-contenedores-maquina-unica.md); diagramas en [diagramas/05-diagrama-de-despliegue.md](diagramas/05-diagrama-de-despliegue.md).
 
-### 13.1 Doce puertas, todas bloqueantes
+### 13.1 Las puertas del pipeline, y las dos que no bloquean
 
-Compilación sin advertencias, formato, cobertura del núcleo, arquitectura, integración, punta a punta, tipos y lint del cliente con sus presupuestos, contrato al día, escaneo de secretos, Trivy sobre dependencias y configuración, Trivy sobre la imagen, y análisis estático.
+Bloquean la construcción: compilación sin advertencias, formato, pruebas unitarias, de arquitectura, de integración y de punta a punta, tipos, lint, pruebas y presupuesto de peso del cliente, escaneo de secretos (en los dos repositorios), Trivy sobre las dependencias y la configuración, y Trivy sobre la imagen, que se publica solo si pasa.
 
-**Una puerta que solo informa es documentación, no una puerta.** Un hallazgo que no bloquea se posterga, y a las dos semanas hay cuarenta.
+**Dos no bloquean, y hay que decirlo:** el umbral de cobertura del núcleo (está en 0 %) y la puerta de calidad de Sonar, cuyo análisis se envía sin esperar el veredicto. La de Sonar sí se **evalúa** y se consulta: falló dos veces el 2026-11-13 y se resolvió con pruebas, no con el umbral (ver 16.5). Hace falta decirlo porque una versión anterior de este documento hablaba de «doce puertas, todas bloqueantes» e incluía un «contrato al día» que no existe como puerta.
+
+**Una puerta que solo informa es documentación, no una puerta.** Convertir esas dos en bloqueantes es una línea de configuración cada una; lo que costó fue tener la cobertura que lo permitiera.
 
 ### 13.2 Cuatro criterios de diseño del pipeline
 
@@ -482,11 +483,11 @@ Publicar Kudo con sus cinco pasos, autenticación, los siete roles con exclusivi
 
 ### 16.2 Nivel 2 — Con margen, en este orden
 
-Réplicas anidadas, calificaciones, y reportar y vetar contenido. El **flujo de aprobaciones** y **reportar y vetar** se entregaron con sus pantallas el 2026-11-13; quedan réplicas y calificaciones solo en la API.
+**Completo y con pantallas** desde el 2026-11-13: flujo de aprobaciones, réplicas anidadas, calificaciones, y reportar y vetar contenido. Cada pieza se verificó en producción.
 
 ### 16.3 Nivel 3 — Diseñado y documentado, no implementado
 
-Verificación del celular por código de un solo uso, gestión completa de la estructura académica, reportes e indicadores, y número propio de WhatsApp.
+Gestión completa de la estructura académica, reportes e indicadores, número propio de WhatsApp y la **entrega por WhatsApp** del código de verificación del celular. El código en sí **sí se implementó** (de un solo uso, con vigencia e intentos limitados), pero se entrega por correo; ver 16.5.
 
 ### 16.4 Reglas de gobierno
 
@@ -505,13 +506,13 @@ eso vale en los dos sentidos.
 
 | Elemento | Estado |
 |---|---|
-| Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
+| Documentación | 19 ADR, drivers, este DAS, 7 documentos de análisis, 18 diagramas Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
 | Pruebas | **199 unitarias, 6 de arquitectura, 59 de integración y 93 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **137 del cliente web**. Todas en verde en el pipeline |
-| Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
+| Cobertura | **88,1 % sobre código nuevo** según Sonar (2026-11-13), por encima del 80 % exigido; la cifra global sigue siendo baja porque cuenta infraestructura y API, que solo prueban la integración y los escenarios de punta a punta. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
-| Funcionalidad | **Nivel 1 implementado.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado: persistencia, correo, WhatsApp, tiempo real y auditoría |
+| Funcionalidad | **Niveles 1 y 2 implementados y desplegados.** Los cinco efectos de publicar un Kudo funcionan contra el sistema desplegado (persistencia, correo, WhatsApp, tiempo real y auditoría), con adjuntos, categorías, registro y aprobación de cuentas, réplicas anidadas, calificaciones, y reportar y vetar. Del nivel 3 solo está el código de verificación, con la limitación declarada abajo |
 | Canales | **Los tres reales en producción** desde el 2026-11-12: correo por SMTP, WhatsApp por Meta Cloud API y tiempo real por SSE y Web Push. El correo sale por Gmail con contraseña de aplicación, no por un proveedor transaccional: ver la nota de abajo |
 
 **Lo que no está, y conviene decirlo antes de que se pregunte:**
@@ -573,7 +574,7 @@ separado y juntas daban una idea equivocada, así que conviene separarlas.
 |---|---|---|
 | Umbral de `dotnet test` en el pipeline | **0 %** | No. Está escrito y nunca subió |
 | Cobertura global de la solución | **18,34 %** | — Incluye infraestructura y API |
-| Puerta de calidad de Sonar sobre **código nuevo** | **87,3 %**, exigido ≥ 80 % (2026-11-13) | Pasa, pero el pipeline no la espera |
+| Puerta de calidad de Sonar sobre **código nuevo** | **88,1 %**, exigido ≥ 80 % (2026-11-13) | Pasa, pero el pipeline no la espera |
 
 El desglose por proyecto, tomado del pipeline, es el que de verdad explica esas cifras:
 
@@ -586,23 +587,25 @@ El desglose por proyecto, tomado del pipeline, es el que de verdad explica esas 
 el registro, la verificación y la moderación, la cobertura sobre código nuevo cayó a 19,9 %, y tras
 las primeras pruebas unitarias subió a 72,4 %: los casos de uso nuevos —y los adjuntos, reescritos en
 el mismo periodo— estaban cubiertos por las pruebas de punta a punta, que Sonar no recibe. Se
-escribieron pruebas unitarias con dobles de cada caso de uso (180 en total) y la puerta pasó a 87,3 %.
+escribieron pruebas unitarias con dobles de cada caso de uso (199 en total) y la puerta pasó a 88,1 %.
 El umbral de 80 % no se tocó.
 
 **Ese 0,93 % no significa que la capa de aplicación esté sin probar, y conviene entender por qué.**
 El informe de cobertura que se genera y que se envía a Sonar sale **solo de las pruebas
 unitarias**: el pipeline apunta a `tests/UcoKudos.UnitTests/.../coverage.opencover.xml`. Los casos
-de uso se ejercitan sobre todo desde las **57 pruebas de integración**, cuya cobertura no se
-recoge ni se fusiona con la anterior. Así que el instrumento mide menos de lo que el proyecto
+de uso se ejercitan, además, desde las **59 pruebas de integración y las 93 de punta a punta**, cuya
+cobertura no se recoge ni se fusiona con la anterior. (Las cifras 47,24 % y 0,93 % de la tabla son de
+antes de añadir las pruebas unitarias de los casos de uso; hoy la capa de aplicación está bastante
+por encima, pero esa tabla no se volvió a medir proyecto por proyecto y no se inventa una cifra nueva.) Así que el instrumento mide menos de lo que el proyecto
 prueba.
 
 Esa es la limitación real, y es metodológica antes que de esfuerzo: **la cifra que se publica no
 representa lo que se ejercita**. Fusionar la cobertura de los tres proyectos de prueba daría un
 número honesto; hoy no se hace.
 
-El 81,25 % de Sonar sobre código nuevo es cierto y es la única cifra comparable con el objetivo del
+El 88,1 % de Sonar sobre código nuevo es cierto y es la única cifra comparable con el objetivo del
 ADR, pero hay que leerla con lo anterior delante: mide código nuevo que, además, resulta estar
-cubierto por unitarias.
+cubierto por unitarias. Lo que quedó cubierto por unitarias ya no es solo lo que era fácil de probar.
 
 **Lo que sigue siendo verdad, y es lo que hay que declarar:** ninguna de las dos puertas de
 cobertura detiene el pipeline hoy. La de `dotnet test` porque su umbral es 0, y la de Sonar porque
@@ -619,14 +622,14 @@ Matriz de seguridad completa en [desarrollo-seguro.md](desarrollo-seguro.md). Lo
 
 | # | Riesgo | Impacto | Mitigación |
 |---|---|---|---|
-| P-01 | **La plantilla de WhatsApp no se aprueba a tiempo.** El destinatario nunca escribió primero, así que todos los envíos van por plantilla: sin aprobación no sale ningún mensaje | Crítico | Enviarla a aprobación el primer día. Es la tarea con dependencia de un tercero más temprana |
-| P-02 | La cuenta del proveedor de nube exige verificación y tarda | Alto | Primera tarea de infraestructura, antes que cualquier otra |
-| P-03 | El plazo no alcanza para el nivel 1 completo | Alto | ADR-0019: el alcance está priorizado y la regla de gobierno protege la funcionalidad obligatoria |
+| P-01 | **La plantilla de WhatsApp no se aprueba a tiempo.** El destinatario nunca escribió primero, así que todos los envíos van por plantilla: sin aprobación no sale ningún mensaje | Crítico | Enviarla a aprobación el primer día. Es la tarea con dependencia de un tercero más temprana. **Estado (2026-11-13): materializado en parte y resuelto en parte.** La plantilla del aviso de Kudo se aprobó y el canal opera en producción; la de **autenticación** (el código de verificación) Meta no deja crearla sin verificación comercial, y por eso ese código sale por correo |
+| P-02 | La cuenta del proveedor de nube exige verificación y tarda | Alto | Primera tarea de infraestructura, antes que cualquier otra. **Estado: materializado y resuelto con otro proveedor:** Oracle rechazó la cuenta y se desplegó en Azure con crédito de estudiante (ADR-0016, revisión del 2026-11-11) |
+| P-03 | El plazo no alcanza para el nivel 1 completo | Alto | ADR-0019: el alcance está priorizado y la regla de gobierno protege la funcionalidad obligatoria. **Estado: no se materializó**; el nivel 1 y el nivel 2 se entregaron |
 | P-04 | **Caída total por ser una sola máquina sin redundancia** | Crítico | Respaldo probado de base y objetos. Es recuperación, no disponibilidad: el riesgo residual es **alto** y viene del presupuesto. **Revisión del 2026-11-12: implementado y comprobado.** `scripts/respaldar.sh` vuelca la base con `pg_dump` y empaqueta el volumen de objetos; `scripts/restaurar.sh` restaura **sobre una base aparte** y compara los recuentos con la viva, de modo que la restauración se prueba sin tocar producción ni esperar al día de la catástrofe. Primera comprobación con éxito el 2026-11-12: las cinco tablas cuadran |
 | P-05 | El pipeline falla la mañana de la entrega | Alto | Procedimiento manual de despliegue documentado |
 | P-06 | La demostración solo funciona en la red de casa | Alto | Probar el flujo completo desde un celular con datos móviles, fuera de esa red, al menos un día antes |
 | P-07 | El número de prueba de Meta solo envía a destinatarios registrados | Medio | Registrarlos antes de la demostración, incluido el del docente si va a recibir un Kudo en vivo |
-| P-08 | Memoria insuficiente con cinco contenedores en la máquina gratuita | Medio | Vigilar. Es la razón por la que ADR-0005 descartó añadir un broker |
+| P-08 | Memoria insuficiente con los contenedores en una sola máquina | Medio | Vigilar. Es la razón por la que ADR-0005 descartó añadir un broker. **Estado:** hay seis contenedores en una máquina de 8 GB (Azure, no gratuita) con el uso de memoria muy por debajo del límite |
 | P-09 | Reutilizar infraestructura propia sin comprenderla, lo que fallaría frente a la exigencia de sustentar | Alto | Cada pieza adaptada se acompaña de sus pruebas, que es la forma de demostrar que se entiende lo que hace |
 
 **P-01 es el riesgo más urgente** y el único que no depende del autor: la aprobación de la plantilla la decide Meta.

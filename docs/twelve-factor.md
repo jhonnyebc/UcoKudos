@@ -214,7 +214,7 @@ Eso es lo que hace que QA-CONF-01 se cumpla: **ninguna notificación se pierde a
 
 **Las pruebas son el punto fuerte de este factor aquí**, y por dos razones:
 
-1. Las de integración corren contra **PostgreSQL y almacenamiento reales** en contenedores desechables, no contra dobles en memoria. Una base en memoria no reproduce índices únicos parciales, ni el comportamiento de `SKIP LOCKED`, ni la expiración de una URL prefirmada: justo lo que hay que verificar.
+1. Las de integración corren contra **PostgreSQL y almacenamiento reales** en contenedores desechables, no contra dobles en memoria. Una base en memoria no reproduce índices únicos parciales, ni el comportamiento de `SKIP LOCKED`, ni el comportamiento de un servidor de objetos real: justo lo que hay que verificar.
 2. **Las pruebas se ejecutan en un contenedor Linux**, y el pipeline invoca **el mismo script** que el entorno local. Así un resultado local y uno del pipeline son comparables, y el umbral de cobertura está definido en un único lugar.
 
 **Brecha de paridad conocida:** el desarrollo es Windows y la producción Linux. El contenedor de pruebas la cierra para lo que importa, que es ejecutar el código sobre el mismo sistema en el que correrá.

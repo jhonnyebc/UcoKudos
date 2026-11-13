@@ -70,7 +70,7 @@ flowchart TB
         api["<b>API</b><br/><i>[Contenedor: ASP.NET Core]</i><br/>Casos de uso, autorización por<br/>jerarquía y lado de lectura.<br/>Expone SSE para avisos en vivo"]
         proceso["<b>Proceso de notificaciones</b><br/><i>[Componente en el mismo contenedor que la API]</i><br/>Recorre la bandeja de eventos con<br/>SKIP LOCKED y despacha los tres canales"]
         bd[("<b>Base de datos</b><br/><i>[Contenedor: PostgreSQL]</i><br/>Kudos, personas, jerarquía,<br/>bandeja de eventos y auditoría")]
-        objetos[("<b>Almacenamiento de objetos</b><br/><i>[Contenedor: compatible con S3]</i><br/>Adjuntos. Contenedor privado:<br/>solo se sirve con URL prefirmada")]
+        objetos[("<b>Almacenamiento de objetos</b><br/><i>[Contenedor: compatible con S3]</i><br/>Adjuntos. Contenedor privado,<br/>sin ruta pública: solo lo alcanza la API")]
         otel["<b>Recolector de observabilidad</b><br/><i>[Contenedor]</i><br/>Trazas, métricas y logs por OTLP.<br/>No se publica a internet"]
     end
 
@@ -96,7 +96,7 @@ flowchart TB
     proceso -->|"Notificación<br/>[Web Push/VAPID]"| push
     proceso -->|"Exporta señales<br/>[OTLP]"| otel
 
-    pwa -->|"Sube el adjunto directo,<br/>sin pasar por la API<br/>[HTTPS/S3 prefirmado]"| objetos
+    api -->|"Guarda y lee adjuntos<br/>[API de S3, red interna]"| objetos
     api -.->|"Avisos en vivo<br/>[SSE]"| pwa
 
     classDef persona fill:#08427b,stroke:#052e56,color:#ffffff
@@ -118,14 +118,14 @@ flowchart TB
 | API | ASP.NET Core | Casos de uso, autorización por jerarquía, lado de lectura y SSE | ADR-0001, ADR-0004 |
 | Proceso de notificaciones | Servicio en segundo plano | Recorre la bandeja y despacha los tres canales | ADR-0005, ADR-0006 |
 | Base de datos | PostgreSQL | Única fuente de verdad, bandeja de eventos y auditoría | ADR-0003 |
-| Almacenamiento de objetos | Compatible con S3 | Adjuntos, privados y servidos con URL prefirmada | ADR-0012 |
+| Almacenamiento de objetos | Compatible con S3 | Adjuntos, privados: solo la API los guarda, los lee y los sirve | ADR-0012 |
 | Recolector de observabilidad | Recolector OTLP | Trazas, métricas y logs | ADR-0014 |
 
 ### Dos cosas de este diagrama que hay que saber defender
 
 **El proceso de notificaciones vive dentro del contenedor de la API.** No es un contenedor aparte, y está dibujado así a propósito. Es un servicio en segundo plano del mismo proceso, que es lo que corresponde a un monolito modular (ADR-0001): separarlo exigiría otra imagen, otra unidad que desplegar y otra que vigilar, sin ningún driver que lo pida. El `SKIP LOCKED` de la bandeja ya permite que, si en el futuro se levantan varias instancias, ninguna procese el mismo evento que otra (QA-ELAS-01), así que la decisión no cierra la puerta a separarlo.
 
-**El cliente sube los adjuntos directamente al almacenamiento**, no a través de la API, usando una URL prefirmada que la API emite **después** de comprobar permisos (ADR-0012). Así los megabytes de una foto no atraviesan la aplicación, que es lo que importa en la red móvil del 90 % de los usuarios (DRV-001). La autorización sigue estando en la API: el almacenamiento solo honra una firma.
+**Los adjuntos pasan por la API, con la sesión de quien sube o descarga** (ADR-0012, revisión del 2026-11-13). La primera versión los subía directo al almacenamiento con una URL prefirmada, para que los megabytes no atravesaran la aplicación (DRV-001); falló con un 403 en el primer uso real, porque el servidor de objetos valida las firmas con un secreto fijo y público. Pasar por la API cuesta hasta 5 MiB por archivo, y a cambio la autorización y la auditoría ocurren en cada subida y en cada descarga, y el almacenamiento no tiene ninguna ruta pública.
 
 ## 3. Trazabilidad con los drivers
 
