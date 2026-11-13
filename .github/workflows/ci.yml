@@ -211,11 +211,11 @@ jobs:
 
       # Se guarda exactamente la imagen escaneada: reconstruirla después invalidaría el escaneo.
       - name: Guardar la imagen escaneada
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         run: docker save "ucokudos-api:${{ steps.version.outputs.etiqueta }}" | gzip > imagen.tar.gz
 
       - name: Subir la imagen como artefacto
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
         uses: actions/upload-artifact@v4
         with:
           name: imagen
@@ -224,7 +224,7 @@ jobs:
 
   publicar:
     name: Publicar la imagen en el registro
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [backend, secretos, vulnerabilidades, calidad, imagenes]
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -250,7 +250,7 @@ jobs:
   # publicar la imagen escaneada: se despliega exactamente lo que pasó todas las puertas.
   desplegar:
     name: Desplegar la API en el servidor
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
     needs: [imagenes, publicar]
     runs-on: ubuntu-latest
     timeout-minutes: 15
