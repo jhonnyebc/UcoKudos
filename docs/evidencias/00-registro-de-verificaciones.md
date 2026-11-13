@@ -592,3 +592,18 @@ aprobar al segundo estudiante de un programa fallaba con «ya hay alguien ejerci
 comprobación de unicidad por programa se aplicaba también a Docente y Estudiante. Corregido.
 
 **Límite que se declara:** el código del celular llega por correo, no por WhatsApp (ADR-0006).
+
+## 2026-11-13 — Reportar y vetar, verificado en producción
+
+Contra el sistema desplegado (api `0.1.0-7e7d43e`, web `0.1.0-96c30e1`): un usuario reportó un Kudo desde
+su tarjeta; el Rector lo vio en «Moderación» con el contenido reportado y lo resolvió con **Vetar** y
+con **Descartar**. Lo vetado dejó de aparecer en el muro.
+
+**Hallazgos del camino, todos antes de desplegar:** (1) el recuento del veto decía «1 contenido
+afectado» al vetar un Kudo con hilo, porque contaba las réplicas después de marcarlas; (2) el cliente
+leía como JSON la respuesta vacía (202) de reportar y habría dicho «no se pudo enviar» de algo que sí
+se envió; (3) vetar no resolvía los reportes pendientes. Los tres los encontraron las pruebas.
+
+**Calidad:** la puerta de Sonar falló dos veces (19,9 % y 72,4 % de cobertura sobre código nuevo)
+porque Sonar solo recibe las pruebas unitarias; se resolvió escribiendo pruebas unitarias de los
+casos de uso (87,3 %), sin tocar el umbral.
