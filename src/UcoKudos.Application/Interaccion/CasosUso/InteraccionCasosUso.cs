@@ -151,12 +151,16 @@ public sealed class CalificarCasoUso(
 
     private async Task ExigirContenidoExistenteAsync(TipoContenido tipo, Guid contenidoId, CancellationToken ct)
     {
-        var existe = tipo == TipoContenido.Kudo
-            ? await kudos.PorIdAsync(contenidoId, ct) is not null
-            : await replicas.PorIdAsync(contenidoId, ct) is not null;
+        bool? vetado = tipo == TipoContenido.Kudo
+            ? (await kudos.PorIdAsync(contenidoId, ct))?.Vetado
+            : (await replicas.PorIdAsync(contenidoId, ct))?.Vetado;
 
-        if (!existe)
+        if (vetado is null)
             throw new ExcepcionDominio("El contenido que intenta calificar no existe.");
+
+        // Lo vetado ya no se muestra: calificarlo movería promedios de algo que nadie ve.
+        if (vetado.Value)
+            throw new ExcepcionDominio("Este contenido fue retirado por moderación y no se puede calificar.");
     }
 
     private async Task ActualizarContadoresAsync(
