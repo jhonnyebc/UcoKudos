@@ -41,23 +41,25 @@ public sealed record KudoDelMuroDto(
 public sealed record PaginaMuroDto(IReadOnlyList<KudoDelMuroDto> Elementos, string? CursorSiguiente);
 
 /// <summary>
-/// Intención de cargar un adjunto (RF-08). La API devuelve una URL prefirmada y el cliente sube el
-/// archivo **directo** al almacenamiento, sin pasar por la API (ADR-0012).
+/// Intención de cargar un adjunto (RF-08): el primero de los tres pasos. La API valida lo que
+/// declara el cliente y reserva el adjunto; después el cliente sube el contenido a la propia API y
+/// confirma (ADR-0012, revisión del 2026-11-13).
 /// </summary>
 public sealed record IntencionAdjuntoDto(string NombreArchivo, string TipoDeclarado, long TamanoDeclarado);
 
-/// <summary>
-/// Lo que el cliente necesita para subir: a dónde subir y con qué identificador confirmar después.
-/// </summary>
-public sealed record SubidaAdjuntoDto(Guid AdjuntoId, string UrlDeSubida, int ValidezMinutos);
+/// <summary>Lo que el cliente necesita para seguir: el identificador del adjunto reservado.</summary>
+public sealed record SubidaAdjuntoDto(Guid AdjuntoId);
 
-/// <summary>Un adjunto ya confirmado, con su enlace de descarga de vida corta.</summary>
-public sealed record AdjuntoDto(
-    Guid Id,
-    string NombreOriginal,
-    string? TipoDetectado,
-    long TamanoBytes,
-    string? UrlDeDescarga);
+/// <summary>
+/// Un adjunto ya confirmado. **No lleva enlace de descarga**: el archivo se pide a la API con la
+/// sesión, que es lo que permite comprobar permisos y auditar cada descarga. Antes llevaba una URL
+/// prefirmada por adjunto, generada además cada vez que se listaba, sin dejar rastro de quién la
+/// pidió.
+/// </summary>
+public sealed record AdjuntoDto(Guid Id, string NombreOriginal, string? TipoDetectado, long TamanoBytes);
+
+/// <summary>El contenido de un adjunto, con lo necesario para servirlo.</summary>
+public sealed record ArchivoAdjuntoDto(byte[] Contenido, string Tipo, string NombreOriginal);
 
 /// <summary>Detalle de un Kudo con sus adjuntos.</summary>
 public sealed record DetalleKudoDto(KudoDelMuroDto Kudo, IReadOnlyList<AdjuntoDto> Adjuntos);

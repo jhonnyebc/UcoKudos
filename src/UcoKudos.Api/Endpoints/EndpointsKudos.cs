@@ -1,3 +1,5 @@
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Http.Features;
 using UcoKudos.Api.Plataforma;
 using UcoKudos.Application.Kudos.Entrada.Dto;
 using UcoKudos.Application.Kudos.Entrada.Puertos;
@@ -106,8 +108,36 @@ public static class EndpointsKudos
             return Results.Ok(await puerto.PrepararSubidaAsync(contexto, kudoId, datos, ct));
         })
         .WithName("PrepararAdjunto")
-        .WithSummary("Pide una URL prefirmada para subir un adjunto")
-        .WithDescription("El cliente sube el archivo directo al almacenamiento, sin pasar por la API.");
+        .WithSummary("Reserva un adjunto y devuelve su identificador")
+        .WithDescription(
+            "Primer paso de la carga: valida lo que declara el cliente. Después se sube el contenido a "
+            + "la propia API y se confirma.");
+
+        grupo.MapPut("/{kudoId:guid}/adjuntos/{adjuntoId:guid}/contenido", async (
+            Guid kudoId,
+            Guid adjuntoId,
+            IAdjuntosPuertoEntrada puerto,
+            IPersonaRepositorio personas,
+            HttpContext http,
+            CancellationToken ct) =>
+        {
+            // Segundo tope, el del servidor web, por si el caso de uso no llegara a leer: el máximo
+            // de un adjunto son 5 MiB y esto deja un margen. Puede no ser modificable (en las
+            // pruebas en memoria, por ejemplo), y en ese caso el caso de uso sigue acotando.
+            var limite = http.Features.Get<IHttpMaxRequestBodySizeFeature>();
+            if (limite is { IsReadOnly: false })
+                limite.MaxRequestBodySize = 6 * 1024 * 1024;
+
+            var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
+            await puerto.GuardarContenidoAsync(contexto, kudoId, adjuntoId, http.Request.Body, ct);
+
+            return Results.NoContent();
+        })
+        .WithName("SubirContenidoAdjunto")
+        .WithSummary("Sube el contenido de un adjunto reservado")
+        .WithDescription(
+            "El cuerpo es el archivo tal cual. Solo el autor del Kudo. El tamaño se acota mientras se "
+            + "lee. Todavía no lo da por bueno: eso lo hace la confirmación.");
 
         grupo.MapPost("/{kudoId:guid}/adjuntos/{adjuntoId:guid}/confirmar", async (
             Guid kudoId,
@@ -128,7 +158,7 @@ public static class EndpointsKudos
             "El tipo se determina por los primeros bytes del archivo, no por la extensión ni por lo "
             + "que declaró el cliente: las dos las controla quien sube el archivo.");
 
-        grupo.MapGet("/{kudoId:guid}/adjuntos/{adjuntoId:guid}/descarga", async (
+        grupo.MapGet("/{kudoId:guid}/adjuntos/{adjuntoId:guid}/archivo", async (
             Guid kudoId,
             Guid adjuntoId,
             IAdjuntosPuertoEntrada puerto,
@@ -137,13 +167,25 @@ public static class EndpointsKudos
             CancellationToken ct) =>
         {
             var contexto = await ContextoUsuario.ResolverAsync(http, personas, ct);
-            var url = await puerto.UrlDeDescargaAsync(contexto, kudoId, adjuntoId, ct);
+            var archivo = await puerto.DescargarAsync(contexto, kudoId, adjuntoId, ct);
 
-            return Results.Ok(new { url });
+            // Contenido de un reconocimiento interno: no debe quedar en cachés compartidas.
+            http.Response.Headers.CacheControl = "private, no-store";
+
+            // El tipo es el detectado por el contenido, y `nosniff` impide que el navegador lo
+            // reinterprete: un archivo que se declaró imagen no puede acabar ejecutándose como página.
+            http.Response.Headers.XContentTypeOptions = "nosniff";
+
+            http.Response.Headers.ContentDisposition =
+                new ContentDispositionHeaderValue("inline") { FileNameStar = archivo.NombreOriginal }.ToString();
+
+            return Results.File(archivo.Contenido, archivo.Tipo);
         })
         .WithName("DescargarAdjunto")
-        .WithSummary("Entrega una URL de descarga de vida corta")
-        .WithDescription("La autorización se comprueba antes de firmar. El enlace vence en minutos.");
+        .WithSummary("Entrega el archivo de un adjunto confirmado")
+        .WithDescription(
+            "La autorización se comprueba aquí y cada descarga queda auditada. El archivo no tiene "
+            + "ninguna otra ruta de acceso.");
 
         grupo.MapDelete("/{kudoId:guid}/adjuntos/{adjuntoId:guid}", async (
             Guid kudoId,

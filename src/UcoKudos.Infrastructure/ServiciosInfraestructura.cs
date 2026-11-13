@@ -193,19 +193,6 @@ public static class ServiciosInfraestructura
                     UseHttp = opcionesObjetos.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
                 }));
 
-            // El cliente que firma las URL del navegador va contra la dirección PÚBLICA. Firmar es
-            // un cálculo local, así que esa dirección no tiene que ser alcanzable desde la API; solo
-            // tiene que ser la que el navegador usará, porque la firma incluye el Host.
-            servicios.AddSingleton(_ => new ClienteDeFirmaS3(new AmazonS3Client(
-                new Amazon.Runtime.BasicAWSCredentials(opcionesObjetos.Usuario, opcionesObjetos.Password),
-                new AmazonS3Config
-                {
-                    ServiceURL = opcionesObjetos.EndpointDeFirma,
-                    ForcePathStyle = true,
-                    AuthenticationRegion = "us-east-1",
-                    UseHttp = opcionesObjetos.EndpointDeFirma.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-                })));
-
             servicios.AddSingleton<AlmacenObjetosCompatibleS3>();
             servicios.AddSingleton<IAlmacenObjetos>(sp => sp.GetRequiredService<AlmacenObjetosCompatibleS3>());
         }

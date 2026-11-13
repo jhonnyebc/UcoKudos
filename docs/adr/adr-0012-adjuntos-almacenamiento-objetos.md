@@ -165,6 +165,33 @@ qué se escribieron contra un servidor real y no contra un doble:
 implementa. Lo que protegió al proyecto no fue acertar con el producto, sino haber puesto una API
 estándar detrás de un puerto. El coste de este cambio fue una línea de configuración y una imagen
 de contenedor.
+## Revisión del 2026-11-13: los archivos pasan por la API
+
+**Qué pasó.** El primer uso real de la subida desde un celular, contra producción, dio un 403 del
+almacenamiento. LocalStack valida las URL prefirmadas con un secreto **fijo y público** (`test`), y
+la aplicación firmaba con el secreto que generó el despliegue. Las pruebas de integración pasaban
+porque su servidor de pruebas usaba justamente `test`: el entorno de pruebas compartía la
+suposición equivocada del código y por eso no podía verla.
+
+**Decisión.** Se abandona el patrón Valet Key. La subida es en tres pasos, todos contra la API y con
+la sesión de quien actúa:
+
+1. `POST /api/kudos/{id}/adjuntos/intencion` reserva el adjunto (solo el autor; tipo y tamaño declarados).
+2. `PUT /api/kudos/{id}/adjuntos/{adjunto}/contenido` sube los bytes (límite de 5 MiB aplicado mientras se lee el cuerpo).
+3. `POST .../confirmar` inspecciona el contenido real y registra tipo y hash.
+
+La descarga es `GET .../archivo`, con `Cache-Control: private, no-store` y `nosniff`, y queda auditada.
+
+**Consecuencias.**
+
+- El almacenamiento deja de ser alcanzable desde internet: se eliminó del proxy la ruta `/adjuntos`.
+  Ya no hay superficie pública que proteger, ni enlaces que filtrar o caducar.
+- Cada descarga exige identidad y cuenta activa; antes bastaba con tener la URL.
+- Se pierde la ventaja de que los megabytes no atraviesen la API. Con un máximo de 5 MiB por archivo
+  y 5 por Kudo es un coste aceptable frente a la seguridad y la simplicidad ganadas.
+- Los dos defectos reales de firma citados arriba, y el hueco del servidor que atiende anónimos,
+  dejan de aplicar: no hay firma.
+
 ## Referencias
 
 - Amazon Web Services. *Amazon S3 API Reference — Presigned URLs.*

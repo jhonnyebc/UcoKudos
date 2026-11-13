@@ -35,7 +35,11 @@ public interface IAdjuntosPuertoEntrada
 
     Task ConfirmarSubidaAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct);
 
-    Task<string> UrlDeDescargaAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct);
+    /// <summary>Recibe el contenido de un adjunto ya reservado y lo guarda, sin darlo aún por bueno.</summary>
+    Task GuardarContenidoAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, Stream cuerpo, CancellationToken ct);
+
+    /// <summary>Entrega el archivo de un adjunto confirmado. Cada descarga queda auditada.</summary>
+    Task<ArchivoAdjuntoDto> DescargarAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct);
 
     Task EliminarAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct);
 }

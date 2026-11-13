@@ -13,16 +13,22 @@ namespace UcoKudos.Application.Kudos.CasosUso;
 /// <summary>
 /// Adjuntos de un Kudo (RF-08, DRV-004), con las cuatro estrategias de ADR-0012.
 ///
-/// La carga es en dos pasos a propósito:
+/// La carga es en tres pasos, y **el archivo pasa por la API en las dos direcciones**:
 ///
-///   1. **Intención**: la API valida, genera la clave y devuelve una URL prefirmada.
-///   2. El cliente sube el archivo **directo al almacenamiento**, sin pasar por la API.
+///   1. **Intención**: la API valida lo que declara el cliente, genera la clave y reserva el adjunto.
+///   2. **Contenido**: el cliente sube el archivo a la API, con su sesión.
 ///   3. **Confirmación**: la API lee los primeros bytes del objeto, detecta el tipo **real** y
 ///      calcula el hash.
 ///
-/// Que los megabytes no atraviesen la aplicación es lo que importa en la red móvil del 90 % de los
-/// usuarios. Y que el tipo se determine por el contenido y no por la extensión importa porque las
-/// dos las controla quien sube el archivo.
+/// La primera versión usaba URL prefirmadas contra el almacenamiento (ADR-0012), y falló en
+/// producción: el servidor de objetos valida las firmas con un secreto fijo y público, así que
+/// firmar con un secreto de verdad hacía que rechazara todas las subidas, y usar el público habría
+/// dejado a cualquiera fabricar firmas válidas. Pasar por la API cuesta el ancho de banda de unos
+/// pocos megabytes, acotados, y a cambio la autorización y la auditoría ocurren en cada subida y en
+/// cada descarga, y el almacenamiento no tiene ninguna ruta pública.
+///
+/// Que el tipo se determine por el contenido y no por la extensión importa porque las dos las
+/// controla quien sube el archivo.
 /// </summary>
 public sealed class AdjuntosCasosUso(
     IKudoRepositorio kudos,
@@ -31,14 +37,6 @@ public sealed class AdjuntosCasosUso(
     ServicioAuditoria auditoria,
     TimeProvider reloj)
 {
-    private static readonly TimeSpan ValidezDeSubida = TimeSpan.FromMinutes(15);
-
-    /// <summary>
-    /// Vida de la URL de descarga. Corta a propósito: compartir el enlace fuera no debe dar acceso
-    /// permanente (QA-SEG-02).
-    /// </summary>
-    private static readonly TimeSpan ValidezDeDescarga = TimeSpan.FromMinutes(5);
-
     public async Task<SubidaAdjuntoDto> PrepararSubidaAsync(
         ContextoPeticion contexto, Guid kudoId, IntencionAdjuntoDto datos, CancellationToken ct)
     {
@@ -65,11 +63,64 @@ public sealed class AdjuntosCasosUso(
         var clave = "kudos/" + kudoId.ToString("N") + "/" + Guid.CreateVersion7(ahora).ToString("N");
 
         var adjunto = kudo.AgregarAdjunto(clave, datos.NombreArchivo, contexto.PersonaId, ahora);
-        var url = await almacen.UrlDeSubidaAsync(clave, ValidezDeSubida, ct);
 
         await unidadTrabajo.ConfirmarAsync(ct);
 
-        return new SubidaAdjuntoDto(adjunto.Id, url, (int)ValidezDeSubida.TotalMinutes);
+        return new SubidaAdjuntoDto(adjunto.Id);
+    }
+
+    /// <summary>
+    /// Recibe el contenido de un adjunto ya reservado y lo guarda. No lo da por bueno: eso lo hace la
+    /// confirmación, que inspecciona lo que de verdad quedó guardado.
+    ///
+    /// **El tamaño se acota aquí, mientras se lee**, y no solo con lo que declaró el cliente: quien
+    /// declara 1 KB puede mandar 1 GB. Se corta en cuanto se pasa del máximo, sin llegar a leer el
+    /// resto, así que un cuerpo desmesurado no agota la memoria de la aplicación.
+    /// </summary>
+    public async Task GuardarContenidoAsync(
+        ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, Stream cuerpo, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contexto);
+        ArgumentNullException.ThrowIfNull(cuerpo);
+
+        var kudo = await kudos.PorIdAsync(kudoId, ct)
+                   ?? throw new ExcepcionDominio("El Kudo indicado no existe.");
+
+        if (kudo.AutorId != contexto.PersonaId)
+            throw new ExcepcionAutorizacion("Solo el autor del Kudo puede subir sus adjuntos.");
+
+        var adjunto = kudo.Adjuntos.FirstOrDefault(a => a.Id == adjuntoId)
+                      ?? throw new ExcepcionDominio("Este Kudo no tiene el adjunto indicado.");
+
+        // Un adjunto confirmado tiene su hash registrado: reemplazar el contenido lo dejaría
+        // desmentido, y la trazabilidad de ADR-0012 dejaría de significar nada.
+        if (adjunto.Confirmado)
+            throw new ExcepcionDominio("Este adjunto ya está confirmado y su contenido no se puede reemplazar.");
+
+        var contenido = await LeerAcotadoAsync(cuerpo, ct);
+
+        if (contenido.Length == 0)
+            throw new ExcepcionDominio("El archivo está vacío.");
+
+        await almacen.GuardarAsync(adjunto.ClaveObjeto, contenido, ct);
+    }
+
+    private static async Task<byte[]> LeerAcotadoAsync(Stream cuerpo, CancellationToken ct)
+    {
+        using var memoria = new MemoryStream();
+        var buffer = new byte[81_920];
+
+        int leidos;
+        while ((leidos = await cuerpo.ReadAsync(buffer, ct)) > 0)
+        {
+            if (memoria.Length + leidos > Adjunto.TamanoMaximoBytes)
+                throw new ExcepcionDominio(
+                    "El adjunto supera el máximo de " + (Adjunto.TamanoMaximoBytes / 1024 / 1024) + " MB.");
+
+            memoria.Write(buffer, 0, leidos);
+        }
+
+        return memoria.ToArray();
     }
 
     /// <summary>
@@ -109,12 +160,12 @@ public sealed class AdjuntosCasosUso(
     }
 
     /// <summary>
-    /// Enlace de descarga. La autorización ocurre **aquí**, antes de firmar: el almacenamiento no
-    /// sabe nada de la jerarquía, solo honra una firma.
+    /// Entrega el archivo. La autorización ocurre **aquí**, y es lo que hace que cada descarga sea de
+    /// alguien: el almacenamiento no sabe nada de la jerarquía ni tiene ruta pública.
     ///
     /// Cada descarga se audita, que es lo que permite responder «quién vio qué archivo y cuándo».
     /// </summary>
-    public async Task<string> UrlDeDescargaAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct)
+    public async Task<ArchivoAdjuntoDto> DescargarAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(contexto);
 
@@ -128,7 +179,8 @@ public sealed class AdjuntosCasosUso(
         var adjunto = kudo.Adjuntos.FirstOrDefault(a => a.Id == adjuntoId && a.EsServible)
                       ?? throw new ExcepcionDominio("Este Kudo no tiene el adjunto indicado.");
 
-        var url = await almacen.UrlDeDescargaAsync(adjunto.ClaveObjeto, ValidezDeDescarga, ct);
+        var contenido = await almacen.LeerAsync(adjunto.ClaveObjeto, ct)
+                        ?? throw new ExcepcionDominio("El archivo no está disponible en el almacenamiento.");
 
         await auditoria.RegistrarAsync(
             contexto,
@@ -141,7 +193,10 @@ public sealed class AdjuntosCasosUso(
 
         await unidadTrabajo.ConfirmarAsync(ct);
 
-        return url;
+        // El tipo es el DETECTADO por el contenido al confirmar, nunca el que declaró quien subió el
+        // archivo: es lo que se le dice al navegador, y un tipo mentiroso sería un vector de ataque.
+        return new ArchivoAdjuntoDto(
+            contenido, adjunto.TipoDetectado ?? "application/octet-stream", adjunto.NombreOriginal);
     }
 
     /// <summary>
@@ -167,20 +222,21 @@ public sealed class AdjuntosCasosUso(
         await unidadTrabajo.ConfirmarAsync(ct);
     }
 
-    /// <summary>Los adjuntos servibles de un Kudo, cada uno con su enlace de vida corta.</summary>
+    /// <summary>
+    /// Los adjuntos servibles de un Kudo. Solo metadatos: listar no da acceso a ningún archivo, y
+    /// por eso no deja rastro de auditoría. El acceso es descargar, y eso sí se audita.
+    /// </summary>
     public async Task<IReadOnlyList<AdjuntoDto>> DeKudoAsync(Guid kudoId, CancellationToken ct)
     {
         var kudo = await kudos.PorIdAsync(kudoId, ct);
         if (kudo is null)
             return [];
 
-        var resultado = new List<AdjuntoDto>();
-        foreach (var adjunto in kudo.Adjuntos.Where(a => a.EsServible))
-        {
-            var url = await almacen.UrlDeDescargaAsync(adjunto.ClaveObjeto, ValidezDeDescarga, ct);
-            resultado.Add(new AdjuntoDto(adjunto.Id, adjunto.NombreOriginal, adjunto.TipoDetectado, adjunto.TamanoBytes, url));
-        }
-
-        return resultado;
+        return
+        [
+            .. kudo.Adjuntos
+                .Where(a => a.EsServible)
+                .Select(a => new AdjuntoDto(a.Id, a.NombreOriginal, a.TipoDetectado, a.TamanoBytes))
+        ];
     }
 }

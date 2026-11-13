@@ -549,18 +549,18 @@ recién creados.
 se publicó y la persona ya fue avisada, pero un adjunto no se pudo subir»— en lugar de volver al
 formulario, donde reenviar lo habría publicado dos veces.
 
-### La ruta de adjuntos, verificada desde fuera contra producción
+### Segundo fallo: 403 al subir, y rediseño (2026-11-13)
 
-Sin sesión, contra el sistema desplegado:
+Corregido el 409, la subida dio ahora «el almacenamiento respondió 403». Se reprodujo en local con la
+misma imagen de LocalStack: el servidor valida las URL prefirmadas con el secreto fijo `test`, y la
+aplicación firmaba con el secreto del despliegue. Las pruebas de integración pasaban porque su
+servidor de pruebas usaba también `test`.
 
-| Petición | Resultado |
-|---|---|
-| GET anónimo a un objeto, sin firma | 404 |
-| Listado anónimo del contenedor | 404 |
-| `/adjuntos` sin barra final | 404 (daba 200 hasta corregirlo) |
-| Borrado, con o sin firma | 404 |
-| GET con firma falsa | 400, lo rechaza el almacenamiento |
-| Subida de 7 MiB con firma falsa | 413, límite en el borde |
+**Solución:** los archivos pasan por la API en las dos direcciones, con la sesión; se eliminó del
+proxy la ruta pública `/adjuntos`, de modo que el almacenamiento solo es alcanzable por la red
+interna. La tabla de verificaciones de la ruta pública (GET anónimo, listado, firma falsa, límite de
+7 MiB) **ya no aplica**: esa superficie no existe. Las pruebas de punta a punta ahora recorren el
+flujo por HTTP (reservar, subir, confirmar, descargar) y comprueban autor, tipo real, tamaño,
+anónimo, identidad sin cuenta y auditoría. Ver ADR-0012, revisión del 2026-11-13.
 
-Se midió antes de publicar la ruta: el servidor de objetos atiende peticiones anónimas, y un GET sin
-firma al contenedor devolvía el listado completo. Por eso la ruta solo admite objetos con firma.
+**Pendiente de registrar:** la subida real desde el celular tras el despliegue.

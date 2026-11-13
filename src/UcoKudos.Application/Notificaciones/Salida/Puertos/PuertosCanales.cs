@@ -88,16 +88,21 @@ public interface IAvisosEnVivo
 public interface IAlmacenObjetos
 {
     /// <summary>
-    /// URL prefirmada para que el cliente **suba** el archivo directo al almacenamiento. Así los
-    /// megabytes no atraviesan la API, que es lo que importa en red móvil (DRV-001).
+    /// Guarda el contenido de un objeto. Quien llama ya acotó el tamaño: el máximo de un adjunto es
+    /// de unos pocos megabytes, así que cabe en memoria y no hace falta tratarlo como un flujo.
+    ///
+    /// **Los archivos pasan por la API en las dos direcciones, y es una decisión, no una carencia.**
+    /// La primera versión usaba URL prefirmadas para que el navegador hablara directo con el
+    /// almacenamiento, y falló en producción: el servidor de objetos que se usa valida las firmas
+    /// con un secreto fijo y público (<c>test</c>), así que firmar con un secreto de verdad hacía
+    /// que rechazara todas las subidas. La alternativa —usar el secreto público— habría permitido a
+    /// cualquiera en internet fabricar firmas válidas. Pasar por la API da, además, autorización y
+    /// auditoría en cada subida y cada descarga, y deja el almacenamiento sin ninguna ruta pública.
     /// </summary>
-    Task<string> UrlDeSubidaAsync(string clave, TimeSpan validez, CancellationToken ct);
+    Task GuardarAsync(string clave, byte[] contenido, CancellationToken ct);
 
-    /// <summary>
-    /// URL prefirmada de **descarga**, de vida corta. La emite la API solo después de comprobar
-    /// permisos: el almacenamiento no sabe nada de la jerarquía, solo honra una firma (QA-SEG-02).
-    /// </summary>
-    Task<string> UrlDeDescargaAsync(string clave, TimeSpan validez, CancellationToken ct);
+    /// <summary>Lee un objeto entero. Devuelve <c>null</c> si no existe.</summary>
+    Task<byte[]?> LeerAsync(string clave, CancellationToken ct);
 
     /// <summary>
     /// Inspecciona el objeto subido: tipo real del contenido, tamaño y hash.

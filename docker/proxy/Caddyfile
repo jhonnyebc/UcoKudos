@@ -25,51 +25,6 @@
 		reverse_proxy api:8080
 	}
 
-	# --- Adjuntos (ADR-0012) -------------------------------------------------------------------
-	#
-	# El navegador sube y descarga **directo** contra el almacenamiento con URL prefirmadas, y la API
-	# firma esas URL contra este mismo dominio. Al quedar en el mismo origen no hace falta CORS.
-	#
-	# **Esta ruta es estrecha a propósito, y cada condición cierra algo concreto.** El
-	# almacenamiento de producción de hoy atiende peticiones anónimas —es una limitación conocida
-	# del servidor compatible con S3 que se usa, y la prueba que la comprobaba está omitida con ese
-	# motivo—, así que publicarlo sin más dejaría a cualquiera listar el contenedor y leer todos los
-	# adjuntos. Se comprobó antes de escribir esto: un GET anónimo al contenedor devolvía el listado
-	# completo. Por eso solo pasa lo que lleva una firma:
-	#
-	#  - La ruta tiene que apuntar a un objeto (`/adjuntos/<algo>`), nunca al contenedor, que es lo
-	#    que impide listarlo.
-	#  - Solo GET y PUT: ni borrar ni modificar el contenedor.
-	#  - Tiene que traer `X-Amz-Signature`. Una petición sin firma ni llega al almacenamiento; una
-	#    con firma falsa la rechaza él, que sí valida la firma cuando la hay.
-	#
-	# El tamaño se acota aquí porque nada más lo hace en el momento de subir: la API solo comprueba
-	# el tamaño que *declara* el cliente, y al confirmar lee el objeto entero a memoria. Un archivo
-	# de varios gigas subido con una URL válida agotaría la memoria de la API. El máximo del dominio
-	# es 5 MiB; el margen es para la cabecera del propio protocolo.
-	@adjuntos {
-		path_regexp ^/adjuntos/.+
-		method GET PUT
-		query X-Amz-Signature=*
-	}
-	handle @adjuntos {
-		request_body {
-			max_size 6MiB
-		}
-		reverse_proxy objetos:4566
-	}
-
-	# Cualquier otra cosa bajo /adjuntos es un 404 explícito, y no la página de la aplicación, que
-	# respondería 200 y haría pensar que el almacenamiento está abierto.
-	#
-	# Sin barra final a propósito (`/adjuntos*`, no `/adjuntos/*`): con ella, la ruta exacta
-	# `/adjuntos` no coincidía, caía en la aplicación y respondía 200. No filtraba nada —era la página
-	# de la aplicación, comprobado—, pero contradecía este comentario. Lo vio la verificación hecha
-	# contra producción tras el despliegue.
-	handle /adjuntos* {
-		respond "No encontrado" 404
-	}
-
 	handle {
 		root * /srv/web
 

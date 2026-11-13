@@ -48,8 +48,11 @@ public sealed class AdjuntosAdaptadorEntrada(AdjuntosCasosUso casos) : IAdjuntos
     public Task ConfirmarSubidaAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct) =>
         casos.ConfirmarSubidaAsync(contexto, kudoId, adjuntoId, ct);
 
-    public Task<string> UrlDeDescargaAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct) =>
-        casos.UrlDeDescargaAsync(contexto, kudoId, adjuntoId, ct);
+    public Task GuardarContenidoAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, Stream cuerpo, CancellationToken ct) =>
+        casos.GuardarContenidoAsync(contexto, kudoId, adjuntoId, cuerpo, ct);
+
+    public Task<ArchivoAdjuntoDto> DescargarAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct) =>
+        casos.DescargarAsync(contexto, kudoId, adjuntoId, ct);
 
     public Task EliminarAsync(ContextoPeticion contexto, Guid kudoId, Guid adjuntoId, CancellationToken ct) =>
         casos.EliminarAsync(contexto, kudoId, adjuntoId, ct);

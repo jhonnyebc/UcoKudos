@@ -20,12 +20,13 @@ namespace UcoKudos.IntegrationTests.Objetos;
 /// las de Bitnami, así que ya no se puede descargar sin credenciales. Está anotado como revisión en
 /// ADR-0012, porque cambia el SBB elegido.
 ///
-/// **Tampoco es un simulador cualquiera, y esa es la parte importante.** El primer sustituto que se
-/// probó servía los objetos sin comprobar la firma y hacía caso omiso de la caducidad. Las pruebas
-/// funcionales pasaban, pero las dos de seguridad fallaban, y menos mal: contra un servidor así, esas
-/// dos pruebas habrían sido inútiles para siempre, porque seguirían en verde el día que el adaptador
-/// dejara de firmar. Un servidor de pruebas que no comprueba la autorización convierte una prueba de
-/// seguridad en decoración.
+/// **Una advertencia sobre lo que este servidor NO prueba.** Valida las firmas de las URL prefirmadas
+/// con un secreto fijo y público (<c>test</c>), y por eso las credenciales de abajo son exactamente
+/// esas. Mientras la aplicación usaba URL prefirmadas, las pruebas pasaban porque firmaban con
+/// <c>test</c>, y en producción —con un secreto de verdad— todas las subidas daban 403. Ahora los
+/// archivos pasan por la API y el adaptador solo guarda y lee por la red interna, así que esa
+/// diferencia ya no puede ocultar nada; pero queda escrito porque un entorno de pruebas que comparte
+/// la suposición del código no encuentra el fallo.
 /// </summary>
 public sealed class AlmacenObjetosFixture : IAsyncLifetime
 {
@@ -34,10 +35,6 @@ public sealed class AlmacenObjetosFixture : IAsyncLifetime
     private readonly IContainer _contenedor = new ContainerBuilder("localstack/localstack:4.9")
         .WithPortBinding(PuertoS3, assignRandomHostPort: true)
         .WithEnvironment("SERVICES", "s3")
-
-        // La línea que da sentido a esta clase: con la validación de firma activada, el servidor
-        // rechaza de verdad lo que tiene que rechazar.
-        .WithEnvironment("S3_SKIP_SIGNATURE_VALIDATION", "0")
         .WithWaitStrategy(Wait.ForUnixContainer().UntilHttpRequestIsSucceeded(peticion =>
             peticion.ForPort(PuertoS3).ForPath("/_localstack/health")))
         .Build();
@@ -47,8 +44,6 @@ public sealed class AlmacenObjetosFixture : IAsyncLifetime
     public OpcionesObjetos Opciones { get; private set; } = null!;
 
     public IAmazonS3 Cliente { get; private set; } = null!;
-
-    public HttpClient Http { get; } = new();
 
     public string Endpoint { get; private set; } = null!;
 
@@ -92,8 +87,7 @@ public sealed class AlmacenObjetosFixture : IAsyncLifetime
                 ForcePathStyle = true,
                 AuthenticationRegion = "us-east-1",
 
-                // Igual que en el arranque real: el esquema lo manda el endpoint. Sin esto, las URL
-                // prefirmadas salen con https contra un servidor que escucha en http.
+                // Igual que en el arranque real: el esquema lo manda el endpoint.
                 UseHttp = Opciones.Endpoint.StartsWith("http://", StringComparison.OrdinalIgnoreCase),
                 MaxErrorRetry = 0,
                 Timeout = TimeSpan.FromSeconds(10)
@@ -101,7 +95,6 @@ public sealed class AlmacenObjetosFixture : IAsyncLifetime
 
     public async Task DisposeAsync()
     {
-        Http.Dispose();
         Cliente.Dispose();
         await _contenedor.DisposeAsync();
     }

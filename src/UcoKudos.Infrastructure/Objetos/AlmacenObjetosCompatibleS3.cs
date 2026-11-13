@@ -25,91 +25,69 @@ namespace UcoKudos.Infrastructure.Objetos;
 public sealed class AlmacenObjetosCompatibleS3 : IAlmacenObjetos
 {
     private readonly IAmazonS3 _cliente;
-    private readonly IAmazonS3 _firmador;
     private readonly OpcionesObjetos _opciones;
 
-    public AlmacenObjetosCompatibleS3(
-        OpcionesObjetos opciones, IAmazonS3 cliente, ClienteDeFirmaS3? clienteDeFirma = null)
+    public AlmacenObjetosCompatibleS3(OpcionesObjetos opciones, IAmazonS3 cliente)
     {
         _opciones = opciones ?? throw new ArgumentNullException(nameof(opciones));
         _cliente = cliente ?? throw new ArgumentNullException(nameof(cliente));
-
-        // Firmar es un cálculo local: no hace ninguna llamada de red. Por eso puede hacerse con un
-        // cliente configurado con la dirección pública sin que esa dirección tenga que ser alcanzable
-        // desde la API. Sin cliente de firma se usa el mismo de las operaciones, que es lo que ocurre
-        // en local, donde las dos direcciones coinciden.
-        _firmador = clienteDeFirma?.Cliente ?? cliente;
     }
 
     /// <summary>
-    /// Esquema con el que se firman las URL, deducido del endpoint configurado.
-    ///
-    /// Hay que decírselo en cada petición y no basta con configurar el cliente: el SDK firma en https
-    /// aunque el endpoint sea http, y entonces la URL apunta a un puerto donde no hay TLS y el cliente
-    /// falla en el saludo. Se detectó en la prueba de integración, no razonándolo.
-    ///
-    /// En el servidor el endpoint será https y esto dará https solo, que es lo correcto: un adjunto no
-    /// debe viajar en claro por internet.
+    /// Guarda el objeto. La API habla con el almacenamiento por la red interna y es la única que lo
+    /// hace: no hay URL prefirmadas ni ninguna ruta pública hacia él (ver <see cref="IAlmacenObjetos"/>).
     /// </summary>
-    private Protocol Esquema =>
-        _opciones.EndpointDeFirma.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
-            ? Protocol.HTTP
-            : Protocol.HTTPS;
+    public async Task GuardarAsync(string clave, byte[] contenido, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(contenido);
 
-    public Task<string> UrlDeSubidaAsync(string clave, TimeSpan validez, CancellationToken ct) =>
-        Task.FromResult(_firmador.GetPreSignedURL(new GetPreSignedUrlRequest
-        {
-            BucketName = _opciones.Contenedor,
-            Key = clave,
-            Verb = HttpVerb.PUT,
-            Protocol = Esquema,
-            Expires = DateTime.UtcNow.Add(validez)
-        }));
+        using var flujo = new MemoryStream(contenido, writable: false);
+
+        await _cliente.PutObjectAsync(
+            new PutObjectRequest { BucketName = _opciones.Contenedor, Key = clave, InputStream = flujo }, ct);
+    }
 
     /// <summary>
-    /// URL de descarga de vida corta. La autorización ya la comprobó el caso de uso antes de llamar
-    /// aquí, que es lo que hace posible QA-SEG-02: compartir el enlace fuera no da acceso permanente.
+    /// Lee el objeto entero a memoria. Es seguro hacerlo porque el tamaño está acotado a unos pocos
+    /// megabytes (ADR-0012), y hace falta entero tanto para servirlo como para calcular su hash.
     /// </summary>
-    public Task<string> UrlDeDescargaAsync(string clave, TimeSpan validez, CancellationToken ct) =>
-        Task.FromResult(_firmador.GetPreSignedURL(new GetPreSignedUrlRequest
-        {
-            BucketName = _opciones.Contenedor,
-            Key = clave,
-            Verb = HttpVerb.GET,
-            Protocol = Esquema,
-            Expires = DateTime.UtcNow.Add(validez)
-        }));
-
-    /// <summary>
-    /// Inspecciona el objeto ya subido: tipo real, tamaño y hash.
-    ///
-    /// **El tipo se determina leyendo los primeros bytes del archivo**, no por la extensión ni por lo
-    /// que declaró el cliente al pedir la URL de subida: las dos las controla quien sube el archivo.
-    /// El tipo que el almacenamiento tenga registrado tampoco sirve, porque lo fija quien sube.
-    /// </summary>
-    public async Task<DatosObjeto?> InspeccionarAsync(string clave, CancellationToken ct)
+    public async Task<byte[]?> LeerAsync(string clave, CancellationToken ct)
     {
         try
         {
             using var respuesta = await _cliente.GetObjectAsync(
                 new GetObjectRequest { BucketName = _opciones.Contenedor, Key = clave }, ct);
 
-            // El contenido se lee a memoria porque el tamaño está acotado a unos pocos megabytes
-            // (ADR-0012), y hace falta entero para calcular el hash de integridad.
             using var memoria = new MemoryStream();
             await respuesta.ResponseStream.CopyToAsync(memoria, ct);
-            var contenido = memoria.ToArray();
 
-            return new DatosObjeto(
-                FirmaDeArchivo.Detectar(contenido),
-                contenido.LongLength,
-                Convert.ToHexStringLower(SHA256.HashData(contenido)));
+            return memoria.ToArray();
         }
         catch (AmazonS3Exception error) when (error.StatusCode == System.Net.HttpStatusCode.NotFound)
         {
-            // El cliente pidió la URL pero nunca subió el archivo. No es un error del sistema.
+            // El objeto nunca se subió, o se eliminó. No es un error del sistema.
             return null;
         }
+    }
+
+    /// <summary>
+    /// Inspecciona el objeto ya subido: tipo real, tamaño y hash.
+    ///
+    /// **El tipo se determina leyendo los primeros bytes del archivo**, no por la extensión ni por lo
+    /// que declaró el cliente al reservar el adjunto: las dos las controla quien sube el archivo. El
+    /// tipo que el almacenamiento tenga registrado tampoco sirve, porque lo fija quien sube.
+    /// </summary>
+    public async Task<DatosObjeto?> InspeccionarAsync(string clave, CancellationToken ct)
+    {
+        var contenido = await LeerAsync(clave, ct);
+
+        if (contenido is null)
+            return null;
+
+        return new DatosObjeto(
+            FirmaDeArchivo.Detectar(contenido),
+            contenido.LongLength,
+            Convert.ToHexStringLower(SHA256.HashData(contenido)));
     }
 
     public async Task EliminarAsync(string clave, CancellationToken ct) =>
@@ -282,14 +260,3 @@ public static class FirmaDeArchivo
     }
 }
 
-/// <summary>
-/// El cliente con el que se firman las URL que usa el navegador.
-///
-/// Es un tipo propio y no un segundo <c>IAmazonS3</c> registrado en el contenedor porque dos
-/// registros de la misma interfaz se pisan: quien pidiera <c>IAmazonS3</c> recibiría el último sin
-/// que nada avisara, y las operaciones internas acabarían yendo a la dirección pública.
-/// </summary>
-public sealed class ClienteDeFirmaS3(IAmazonS3 cliente)
-{
-    public IAmazonS3 Cliente { get; } = cliente ?? throw new ArgumentNullException(nameof(cliente));
-}

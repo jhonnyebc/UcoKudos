@@ -139,7 +139,7 @@ Siete contenedores: cliente web (PWA), proxy inverso, API, proceso de notificaci
 Dos decisiones del nivel 2 que hay que poder defender:
 
 - **El proceso de notificaciones vive dentro del contenedor de la API.** Es un servicio en segundo plano del mismo artefacto, que es lo que corresponde a un monolito modular. Separarlo exigiría otra imagen, otra unidad que desplegar y otra que vigilar, sin driver que lo pida. El `SKIP LOCKED` de la bandeja deja la puerta abierta.
-- **El cliente sube los adjuntos directo al almacenamiento**, con una URL prefirmada que la API emite tras comprobar permisos. Los megabytes no atraviesan la aplicación, que importa en la red móvil del 90 % de los usuarios.
+- **Los adjuntos pasan por la API, con la sesión de quien sube o descarga.** El almacenamiento solo es alcanzable por la red interna. Se descartó la URL prefirmada tras fallar con un 403 en el primer uso real (ADR-0012, revisión del 2026-11-13); el coste son hasta 5 MiB por archivo que cruzan la aplicación.
 
 ### 4.3 Arquetipo
 
@@ -368,7 +368,7 @@ Detalle completo, con la trazabilidad de cada escenario de calidad a su prueba, 
 
 **Por qué contra infraestructura real y no contra dobles:** una base en memoria no reproduce un índice único parcial, ni el comportamiento de `SKIP LOCKED`, ni la expiración de una URL firmada, ni el truncamiento de precisión que haría fallar la verificación de la cadena de hashes. Es justo lo que hay que verificar.
 
-**Las pruebas negativas son las que importan** en seguridad: la prueba de los adjuntos no es que la descarga funcione, sino que **falle** sin firma y con una URL expirada.
+**Las pruebas negativas son las que importan** en seguridad: la prueba de los adjuntos no es que la descarga funcione, sino que **falle** sin identidad, sin cuenta, para quien no es el autor y con un contenido que no es del tipo declarado.
 
 **Dos verificaciones fuera de la pirámide**, sin las cuales dos escenarios quedarían sin evidencia: una prueba de carga con percentiles (QA-REND-01 y QA-REND-02) y una prueba de restauración del respaldo de la base **y** del volumen de objetos juntos.
 
@@ -451,7 +451,7 @@ Los 19 ADR están en [adr/README.md](adr/README.md), todos con la misma estructu
 | 0009 | SSE para conectados y Web Push para desconectados |
 | 0010 | CQRS ligero, contadores materializados, caché por evento, cursor |
 | 0011 | Árbol de réplicas con padre y ruta materializada |
-| 0012 | Adjuntos en objetos privados con URL prefirmada |
+| 0012 | Adjuntos en objetos privados, servidos por la API |
 | 0013 | Auditoría de solo inserción con cadena de hashes |
 | 0014 | OpenTelemetry con la traza propagada a la frontera asíncrona |
 | 0015 | Cliente como PWA mobile first en React |
@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **107 unitarias, 6 de arquitectura, 63 de integración y 32 de punta a punta** contra PostgreSQL real, con una omitida y documentada; **90 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **107 unitarias, 6 de arquitectura, 58 de integración y 39 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **90 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -532,10 +532,10 @@ eso vale en los dos sentidos.
   (ADR-0004), pero significa que no hay alta de usuarios por autoservicio.
 - Del cliente web falta el **detalle de un Kudo** como pantalla propia.
 - Los **adjuntos** (RF-08) están implementados: se suben desde el formulario de publicar y se abren
-  desde el muro, con nueve escenarios de punta a punta del flujo completo. **Lo que consta como
+  desde el muro, con escenarios de punta a punta del flujo completo (reservar, subir, confirmar, descargar). **Lo que consta como
   verificado es el servidor y las pruebas; la subida real desde un celular contra producción está
   pendiente de registrarse en `docs/evidencias`.** El primer intento real falló con un 409 por un
-  defecto de mapeo de EF Core que ninguna prueba había visto; está corregido y explicado en
+  defecto de mapeo de EF Core y el segundo con un 403 del almacenamiento, ambos invisibles a las pruebas; el segundo se resolvió rediseñando la ruta (archivos por la API). Detalle en
   `docs/evidencias/00-registro-de-verificaciones.md`.
 - No hay **prueba de carga**, así que los umbrales de QA-REND-01 y QA-REND-02 están sin medir.
   Son objetivos de diseño, no resultados verificados.
