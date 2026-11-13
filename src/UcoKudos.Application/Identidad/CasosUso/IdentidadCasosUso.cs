@@ -67,14 +67,29 @@ public sealed class RegistrarCuentaCasoUso(
 
     private async Task ExigirAmbitoExistenteAsync(Rol rol, Guid? facultadId, Guid? programaId, CancellationToken ct)
     {
-        if (rol.Ambito == AmbitoRol.Facultad && await academico.FacultadPorIdAsync(facultadId!.Value, ct) is null)
-            throw new ExcepcionDominio("La facultad indicada no existe.");
+        if (rol.Ambito == AmbitoRol.Facultad)
+        {
+            var facultad = facultadId is null ? null : await academico.FacultadPorIdAsync(facultadId.Value, ct);
+            if (facultad is null)
+                throw new ExcepcionDominio("La facultad indicada no existe.");
+
+            // Una facultad desactivada deja de ofrecerse: no admite solicitudes nuevas.
+            if (!facultad.Activa)
+                throw new ExcepcionDominio("La facultad " + facultad.Nombre + " no admite solicitudes nuevas.");
+        }
 
         if (rol.Ambito == AmbitoRol.Programa)
         {
             var programa = programaId is null ? null : await academico.ProgramaPorIdAsync(programaId.Value, ct);
             if (programa is null)
                 throw new ExcepcionDominio("El programa académico indicado no existe.");
+
+            if (!programa.Activo)
+                throw new ExcepcionDominio("El programa " + programa.Nombre + " no admite solicitudes nuevas.");
+
+            // La facultad de la solicitud tiene que ser la del programa: de ella depende quién aprueba.
+            if (facultadId != programa.FacultadId)
+                throw new ExcepcionDominio("El programa indicado no pertenece a esa facultad.");
         }
     }
 

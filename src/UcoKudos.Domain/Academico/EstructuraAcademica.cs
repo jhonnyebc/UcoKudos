@@ -26,6 +26,13 @@ public sealed class Facultad
     public string Codigo { get; private set; }
     public bool Activa { get; private set; }
 
+    /// <summary>Cambia el nombre y el código. El código sigue siendo único: lo comprueba quien llama y la base.</summary>
+    public void Actualizar(string nombre, string codigo)
+    {
+        Nombre = Texto.Exigir(nombre, "El nombre de la facultad es obligatorio.");
+        Codigo = Texto.ExigirCodigo(codigo, "El código de la facultad es obligatorio.");
+    }
+
     public void Desactivar() => Activa = false;
     public void Activar() => Activa = true;
 }
@@ -60,6 +67,12 @@ public sealed class Programa
     public string Codigo { get; private set; }
     public bool Activo { get; private set; }
 
+    public void Actualizar(string nombre, string codigo)
+    {
+        Nombre = Texto.Exigir(nombre, "El nombre del programa es obligatorio.");
+        Codigo = Texto.ExigirCodigo(codigo, "El código del programa es obligatorio.");
+    }
+
     public void Desactivar() => Activo = false;
     public void Activar() => Activo = true;
 }
@@ -91,6 +104,9 @@ public sealed class VinculoAcademico
     public bool Activo { get; private set; }
 
     public void Desactivar() => Activo = false;
+
+    /// <summary>Vuelve a vincular: la clave es persona, programa y tipo, así que se reactiva el mismo vínculo.</summary>
+    public void Activar() => Activo = true;
 }
 
 /// <summary>Qué hace la persona en el programa.</summary>

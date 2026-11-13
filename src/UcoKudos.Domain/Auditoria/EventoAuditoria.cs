@@ -27,6 +27,11 @@ public static class AccionesAuditoria
     public const string SolicitudPresentar = "solicitud.presentar";
     public const string SolicitudAprobar = "solicitud.aprobar";
     public const string ContactoVerificar = "contacto.verificar";
+    public const string EstructuraCrear = "estructura.crear";
+    public const string EstructuraActualizar = "estructura.actualizar";
+    public const string EstructuraCambiarEstado = "estructura.cambiar_estado";
+    public const string VinculoAsignar = "vinculo.asignar";
+    public const string VinculoQuitar = "vinculo.quitar";
     public const string SolicitudRechazar = "solicitud.rechazar";
     public const string UsuarioCambiarRol = "usuario.cambiar_rol";
     public const string UsuarioDesactivar = "usuario.desactivar";

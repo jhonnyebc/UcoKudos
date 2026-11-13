@@ -23,4 +23,17 @@ public interface IEstructuraAcademicaRepositorio
     Task<IReadOnlyList<Guid>> ProgramasDeAsync(Guid personaId, TipoVinculo tipo, CancellationToken ct);
 
     void AgregarVinculo(VinculoAcademico vinculo);
+
+    /// <summary>Los vínculos activos de una persona, de cualquier tipo.</summary>
+    Task<IReadOnlyList<VinculoAcademico>> VinculosDeAsync(Guid personaId, CancellationToken ct);
+
+    /// <summary>Un vínculo concreto, activo o no: si existe desactivado, se reactiva en lugar de duplicarse.</summary>
+    Task<VinculoAcademico?> VinculoAsync(Guid personaId, Guid programaId, TipoVinculo tipo, CancellationToken ct);
+
+    Task<IReadOnlyList<Programa>> ProgramasPorIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct);
+
+    /// <summary>¿Hay otra facultad con ese código? El código es único; la base lo garantiza y esto da el mensaje.</summary>
+    Task<bool> ExisteCodigoDeFacultadAsync(string codigo, Guid? exceptoId, CancellationToken ct);
+
+    Task<bool> ExisteCodigoDeProgramaAsync(string codigo, Guid? exceptoId, CancellationToken ct);
 }

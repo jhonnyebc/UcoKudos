@@ -98,6 +98,42 @@ public sealed class RegistroYVerificacionCasosUsoTests
         Assert.Contains("programa", error.Message, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task No_se_registra_en_un_programa_desactivado_ni_con_otra_facultad_que_la_del_programa()
+    {
+        var facultad = Guid.NewGuid();
+        var programa = new Programa(facultad, "Ingeniería de Sistemas", "ISIS", Ahora);
+        _academico.ProgramaPorIdAsync(programa.Id, Arg.Any<CancellationToken>()).Returns(programa);
+
+        // Una facultad distinta de la del programa: de ella depende quién aprueba.
+        var error = await Assert.ThrowsAsync<ExcepcionDominio>(() =>
+            Registro.EjecutarAsync(Solicitud(Guid.NewGuid(), programa.Id), "traza", CancellationToken.None));
+        Assert.Contains("no pertenece", error.Message, StringComparison.Ordinal);
+
+        programa.Desactivar();
+        var desactivado = await Assert.ThrowsAsync<ExcepcionDominio>(() =>
+            Registro.EjecutarAsync(Solicitud(facultad, programa.Id), "traza", CancellationToken.None));
+        Assert.Contains("no admite solicitudes", desactivado.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Un_coordinador_de_facultad_no_se_registra_en_una_facultad_desactivada_ni_inexistente()
+    {
+        var facultad = new Facultad("Ciencias", "CIE", Ahora);
+        _academico.FacultadPorIdAsync(facultad.Id, Arg.Any<CancellationToken>()).Returns(facultad);
+
+        RegistrarCuentaDto Decana(Guid? facultadId) =>
+            new("decana@uco.edu.co", "+573001234567", "Decana", Rol.CoordinadorFacultad.Id, facultadId, null);
+
+        await Assert.ThrowsAsync<ExcepcionDominio>(() =>
+            Registro.EjecutarAsync(Decana(Guid.NewGuid()), "traza", CancellationToken.None));
+
+        facultad.Desactivar();
+        var error = await Assert.ThrowsAsync<ExcepcionDominio>(() =>
+            Registro.EjecutarAsync(Decana(facultad.Id), "traza", CancellationToken.None));
+        Assert.Contains("no admite solicitudes", error.Message, StringComparison.Ordinal);
+    }
+
     // ------------------------------------------------------------ verificación
 
     private VerificarContactoCasoUso Verificacion => new(_personas, _unidad, Auditoria, _reloj);

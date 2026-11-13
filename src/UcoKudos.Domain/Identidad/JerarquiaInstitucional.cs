@@ -106,6 +106,46 @@ public static class JerarquiaInstitucional
     public static bool PuedeAdministrarCategorias(AmbitoUsuario usuario) => usuario.Rol.AdministraCategorias;
 
     /// <summary>
+    /// Administrar facultades y programas. El enunciado no lo fija: se asigna a los mismos tres roles
+    /// que administran las categorías, por ser decisiones de toda la universidad.
+    /// </summary>
+    public static bool PuedeAdministrarEstructura(AmbitoUsuario usuario) => usuario.Rol.AdministraCategorias;
+
+    /// <summary>¿Cae este programa dentro del ámbito del usuario?</summary>
+    public static bool AlcanzaPrograma(AmbitoUsuario usuario, Guid programaId, Guid facultadDelPrograma) =>
+        usuario.Rol.Ambito switch
+        {
+            AmbitoRol.Universidad => true,
+            AmbitoRol.Facultad => usuario.FacultadId is not null && usuario.FacultadId == facultadDelPrograma,
+            AmbitoRol.Programa => usuario.ProgramaId is not null && usuario.ProgramaId == programaId,
+            _ => false
+        };
+
+    /// <summary>
+    /// RF-05: vincular a una persona con un programa. Quien lo hace tiene que estar por encima de ella
+    /// en la jerarquía —nadie se vincula a sí mismo— y alcanzar el programa del vínculo.
+    /// </summary>
+    public static bool PuedeGestionarVinculos(
+        AmbitoUsuario usuario, Guid personaId, Rol rolDeLaPersona, Guid programaId, Guid facultadDelPrograma) =>
+        usuario.PersonaId != personaId
+        && usuario.Rol.Nivel > rolDeLaPersona.Nivel
+        && AlcanzaPrograma(usuario, programaId, facultadDelPrograma);
+
+    /// <summary>
+    /// ¿Puede el usuario ver los programas de esa persona? Ella misma sí; otro, solo si está por
+    /// encima en la jerarquía y alcanza al menos uno de los programas de la persona.
+    /// </summary>
+    public static bool PuedeVerProgramasDe(
+        AmbitoUsuario usuario, Guid personaId, Rol rolDeLaPersona, IEnumerable<(Guid ProgramaId, Guid FacultadId)> programas)
+    {
+        if (usuario.PersonaId == personaId)
+            return true;
+
+        return usuario.Rol.Nivel > rolDeLaPersona.Nivel
+               && programas.Any(p => AlcanzaPrograma(usuario, p.ProgramaId, p.FacultadId));
+    }
+
+    /// <summary>
     /// RF-12: vetar contenido. Solo Rector y Coordinador Académico.
     ///
     /// El Administrador del Sistema **no** puede vetar, aunque sea el rol más alto. Es

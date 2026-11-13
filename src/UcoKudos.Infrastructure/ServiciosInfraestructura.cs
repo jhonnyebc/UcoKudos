@@ -2,6 +2,9 @@ using Amazon.S3;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using UcoKudos.Application.Academico.CasosUso;
+using UcoKudos.Application.Academico.Entrada.Adaptadores;
+using UcoKudos.Application.Academico.Entrada.Puertos;
 using UcoKudos.Application.Auditoria.CasosUso;
 using UcoKudos.Application.Comun.CasosUso;
 using UcoKudos.Application.Comun.Salida.Puertos;
@@ -213,6 +216,9 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<ResolverSolicitudCasoUso>();
         servicios.AddScoped<ConsultarIdentidadCasoUso>();
         servicios.AddScoped<BuscarPersonasCasoUso>();
+        servicios.AddScoped<ConsultarProgramasDePersonaCasoUso>();
+        servicios.AddScoped<GestionarVinculosCasoUso>();
+        servicios.AddScoped<AdministrarEstructuraCasoUso>();
         servicios.AddScoped<ResponderCasoUso>();
         servicios.AddScoped<CalificarCasoUso>();
         servicios.AddScoped<ReportarContenidoCasoUso>();
@@ -225,6 +231,7 @@ public static class ServiciosInfraestructura
         servicios.AddScoped<IAdjuntosPuertoEntrada, AdjuntosAdaptadorEntrada>();
         servicios.AddScoped<ICategoriasPuertoEntrada, CategoriasAdaptadorEntrada>();
         servicios.AddScoped<IIdentidadPuertoEntrada, IdentidadAdaptadorEntrada>();
+        servicios.AddScoped<IAcademicoPuertoEntrada, AcademicoAdaptadorEntrada>();
         servicios.AddScoped<IInteraccionPuertoEntrada, InteraccionAdaptadorEntrada>();
         servicios.AddScoped<IModeracionPuertoEntrada, ModeracionAdaptadorEntrada>();
         servicios.AddScoped<IAuditoriaPuertoEntrada, VerificarAuditoriaCasoUso>();

@@ -124,6 +124,22 @@ public sealed class EstructuraAcademicaRepositorio(UcoKudosDbContext contexto) :
             .ToListAsync(ct);
 
     public void AgregarVinculo(VinculoAcademico vinculo) => contexto.VinculosAcademicos.Add(vinculo);
+
+    public async Task<IReadOnlyList<VinculoAcademico>> VinculosDeAsync(Guid personaId, CancellationToken ct) =>
+        await contexto.VinculosAcademicos.Where(v => v.PersonaId == personaId && v.Activo).ToListAsync(ct);
+
+    public Task<VinculoAcademico?> VinculoAsync(Guid personaId, Guid programaId, TipoVinculo tipo, CancellationToken ct) =>
+        contexto.VinculosAcademicos.FirstOrDefaultAsync(
+            v => v.PersonaId == personaId && v.ProgramaId == programaId && v.Tipo == tipo, ct);
+
+    public async Task<IReadOnlyList<Programa>> ProgramasPorIdsAsync(IReadOnlyCollection<Guid> ids, CancellationToken ct) =>
+        ids.Count == 0 ? [] : await contexto.Programas.Where(p => ids.Contains(p.Id)).ToListAsync(ct);
+
+    public Task<bool> ExisteCodigoDeFacultadAsync(string codigo, Guid? exceptoId, CancellationToken ct) =>
+        contexto.Facultades.AnyAsync(f => f.Codigo == codigo && f.Id != exceptoId, ct);
+
+    public Task<bool> ExisteCodigoDeProgramaAsync(string codigo, Guid? exceptoId, CancellationToken ct) =>
+        contexto.Programas.AnyAsync(p => p.Codigo == codigo && p.Id != exceptoId, ct);
 }
 
 public sealed class KudoRepositorio(UcoKudosDbContext contexto) : IKudoRepositorio
