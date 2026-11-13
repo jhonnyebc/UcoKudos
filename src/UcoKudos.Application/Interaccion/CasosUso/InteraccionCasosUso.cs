@@ -54,6 +54,10 @@ public sealed class ResponderCasoUso(
             if (padre.KudoId != kudoId)
                 throw new ExcepcionDominio("Esa réplica pertenece a otro Kudo.");
 
+            // Lo vetado ya no se muestra: una respuesta a ello quedaría colgando de la nada.
+            if (padre.Vetado)
+                throw new ExcepcionDominio("No se puede responder a un contenido retirado por moderación.");
+
             replica = Replica.SobreReplica(padre, contexto.PersonaId, datos.Contenido, ahora);
         }
 
@@ -67,10 +71,11 @@ public sealed class ResponderCasoUso(
             contexto, AccionesAuditoria.ReplicaPublicar, nameof(Replica), replica.Id,
             new { kudoId, padreId = replica.ReplicaPadreId, profundidad = replica.Profundidad }, ahora, ct);
 
+        var autor = await personas.PorIdAsync(contexto.PersonaId, ct);
+
         // Se avisa al destinatario del Kudo, salvo que sea quien responde.
         if (kudo.DestinatarioId != contexto.PersonaId)
         {
-            var autor = await personas.PorIdAsync(contexto.PersonaId, ct);
             bandeja.Programar(new EventoPendiente(
                 EventoId: replica.Id,
                 TipoEvento: TiposEvento.ReplicaPublicada,
@@ -83,7 +88,7 @@ public sealed class ResponderCasoUso(
         await unidadTrabajo.ConfirmarAsync(ct);
         await cache.InvalidarGrupoAsync(GruposCache.Muro, ct);
 
-        return Convertir(replica);
+        return Convertir(replica, autor?.NombreCompleto ?? "Alguien");
     }
 
     /// <summary>
@@ -93,12 +98,24 @@ public sealed class ResponderCasoUso(
     /// (ADR-0011): el cliente no tiene que reconstruir el árbol, solo usar la profundidad para la
     /// sangría. Menos trabajo en el celular, que es donde importa.
     /// </summary>
-    public async Task<IReadOnlyList<ReplicaDto>> HiloAsync(Guid kudoId, CancellationToken ct) =>
-        [.. (await replicas.HiloDeAsync(kudoId, ct)).Where(r => !r.Vetado).Select(Convertir)];
+    public async Task<IReadOnlyList<ReplicaDto>> HiloAsync(Guid kudoId, CancellationToken ct)
+    {
+        var visibles = (await replicas.HiloDeAsync(kudoId, ct)).Where(r => !r.Vetado).ToList();
 
-    private static ReplicaDto Convertir(Replica replica) =>
-        new(replica.Id, replica.KudoId, replica.ReplicaPadreId, replica.AutorId, replica.Contenido,
-            replica.Profundidad, replica.TotalReplicas, replica.PromedioCalificacion,
+        // El nombre de cada autor, una vez por persona aunque haya respondido varias veces.
+        var nombres = new Dictionary<Guid, string>();
+        foreach (var autorId in visibles.Select(r => r.AutorId).Distinct())
+        {
+            var persona = await personas.PorIdAsync(autorId, ct);
+            nombres[autorId] = persona?.NombreCompleto ?? "Alguien";
+        }
+
+        return [.. visibles.Select(r => Convertir(r, nombres[r.AutorId]))];
+    }
+
+    private static ReplicaDto Convertir(Replica replica, string autorNombre) =>
+        new(replica.Id, replica.KudoId, replica.ReplicaPadreId, replica.AutorId, autorNombre,
+            replica.Contenido, replica.Profundidad, replica.TotalReplicas, replica.PromedioCalificacion,
             replica.TotalCalificaciones, replica.PublicadaEn);
 }
 

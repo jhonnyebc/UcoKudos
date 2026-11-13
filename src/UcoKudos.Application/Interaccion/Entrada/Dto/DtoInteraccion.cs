@@ -17,6 +17,7 @@ public sealed record ReplicaDto(
     Guid KudoId,
     Guid? ReplicaPadreId,
     Guid AutorId,
+    string AutorNombre,
     string Contenido,
     short Profundidad,
     int TotalReplicas,
