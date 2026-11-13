@@ -507,7 +507,7 @@ eso vale en los dos sentidos.
 |---|---|
 | Documentación | 19 ADR, drivers, este DAS, 6 documentos de análisis, 21 diagramas validados con el parser oficial de Mermaid, manual de puesta a punto |
 | Estructura del código | Cuatro capas en cuatro proyectos, compilando sin advertencias |
-| Pruebas | **116 unitarias, 6 de arquitectura, 59 de integración y 72 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **117 del cliente web**. Todas en verde en el pipeline |
+| Pruebas | **180 unitarias, 6 de arquitectura, 59 de integración y 72 de punta a punta** contra PostgreSQL real y un almacenamiento de objetos real; **117 del cliente web**. Todas en verde en el pipeline |
 | Cobertura | **81,25 % sobre código nuevo del núcleo** según Sonar, por encima del 80 % exigido; **18,34 % global** contando infraestructura y API. Ninguna de las dos puertas detiene hoy el pipeline: ver la nota de abajo |
 | Pipeline | **Ejecutándose en GitHub Actions**, 6 trabajos en el back-end y 4 en el cliente, todos bloqueantes |
 | Despliegue | **Hecho.** <https://kudos.20.83.117.236.sslip.io>, con HTTPS y certificado de una autoridad real |
@@ -572,7 +572,7 @@ separado y juntas daban una idea equivocada, así que conviene separarlas.
 |---|---|---|
 | Umbral de `dotnet test` en el pipeline | **0 %** | No. Está escrito y nunca subió |
 | Cobertura global de la solución | **18,34 %** | — Incluye infraestructura y API |
-| Puerta de calidad de Sonar sobre **código nuevo** | **81,25 %**, exigido ≥ 80 % | Pasa, pero el pipeline no la espera |
+| Puerta de calidad de Sonar sobre **código nuevo** | **87,3 %**, exigido ≥ 80 % (2026-11-13) | Pasa, pero el pipeline no la espera |
 
 El desglose por proyecto, tomado del pipeline, es el que de verdad explica esas cifras:
 
@@ -580,6 +580,13 @@ El desglose por proyecto, tomado del pipeline, es el que de verdad explica esas 
 |---|---|---|
 | `UcoKudos.Domain` | **47,24 %** | 44,17 % |
 | `UcoKudos.Application` | **0,93 %** | 1,78 % |
+
+**La puerta falló dos veces el 2026-11-13 y se arregló con pruebas, no con el umbral.** Al añadir
+el registro, la verificación y la moderación, la cobertura sobre código nuevo cayó a 19,9 %, y tras
+las primeras pruebas unitarias subió a 72,4 %: los casos de uso nuevos —y los adjuntos, reescritos en
+el mismo periodo— estaban cubiertos por las pruebas de punta a punta, que Sonar no recibe. Se
+escribieron pruebas unitarias con dobles de cada caso de uso (180 en total) y la puerta pasó a 87,3 %.
+El umbral de 80 % no se tocó.
 
 **Ese 0,93 % no significa que la capa de aplicación esté sin probar, y conviene entender por qué.**
 El informe de cobertura que se genera y que se envía a Sonar sale **solo de las pruebas
