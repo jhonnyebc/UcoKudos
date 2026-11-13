@@ -114,11 +114,14 @@ public sealed class VetarContenidoCasoUso(
 
         kudo.Vetar();
 
-        var hilo = await replicas.HiloDeAsync(kudoId, ct);
-        foreach (var replica in hilo.Where(r => !r.Vetado))
+        // Se toma la lista de las que están visibles ANTES de vetarlas: contarlas después daba siempre
+        // cero, y el resultado decía «1 contenido afectado» al vetar un Kudo con todo su hilo. Lo
+        // encontró la primera prueba de punta a punta del veto.
+        var visibles = (await replicas.HiloDeAsync(kudoId, ct)).Where(r => !r.Vetado).ToList();
+        foreach (var replica in visibles)
             replica.Vetar();
 
-        return (1 + hilo.Count(r => !r.Vetado), kudo.AutorId);
+        return (1 + visibles.Count, kudo.AutorId);
     }
 
     /// <summary>
